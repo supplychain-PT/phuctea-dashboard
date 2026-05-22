@@ -1345,8 +1345,10 @@ async function fetchSalesFromSheet(){
           }
         });
         if(obj.maHang){
-          // LN thực (sau giảm giá) = DT sau GG - Giá vốn
-          obj.lnThuc=(obj.thanhTien||0)-(obj.tongGiaVon||0); // LN trên DT chưa GG
+          // LN trước GG = thành tiền - giá vốn
+          obj.lnTruocGG=(obj.thanhTien||0)-(obj.tongGiaVon||0);
+          // LN sau GG = tổng thành tiền - giá vốn  (thực tế sau chiết khấu)
+          obj.lnThuc=(obj.tongThanhTien||0)-(obj.tongGiaVon||0);
           allData.push(obj);cnt++;
         }
       }
@@ -2674,8 +2676,10 @@ function renderBOD(){
     return r;
   }
   function sumF(arr,f){return arr.reduce((s,r)=>s+(r[f]||0),0);}
-  function tsln(arr){const dt=sumF(arr,'tongThanhTien');return dt>0?sumF(arr,'tongLoiNhuan')/dt:0;}
-  function tsln_truoc(arr){const dt=sumF(arr,'thanhTien');return dt>0?sumF(arr,'lnThuc')/dt:0;}
+  // TSLN sau GG = (tổng thành tiền - giá vốn) / tổng thành tiền
+  function tsln(arr){const dt=sumF(arr,'tongThanhTien'),gv=sumF(arr,'tongGiaVon');return dt>0?(dt-gv)/dt:0;}
+  // TSLN trước GG = (thành tiền - giá vốn) / thành tiền
+  function tsln_truoc(arr){const dt=sumF(arr,'thanhTien'),gv=sumF(arr,'tongGiaVon');return dt>0?(dt-gv)/dt:0;}
 
   // Lấy targets từ localStorage (KPI tab)
   function getKH(field,month){
