@@ -274,8 +274,8 @@ tr:last-child td{border-bottom:none}
   <div class="kgrid">
     <div class="kc gr"><div class="klbl">Doanh Thu</div><div class="kval" id="k0">–</div><div id="k0b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k0s"></div></div>
     <div class="kc go"><div class="klbl">Số Lượng Bán</div><div class="kval" id="k1">–</div><div id="k1b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k1s"></div></div>
-    <div class="kc bl"><div class="klbl">Lợi Nhuận</div><div class="kval" id="k2">–</div><div id="k2b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k2s"></div></div>
-    <div class="kc gr"><div class="klbl">Biên LN / DT</div><div class="kval" id="k3">–</div><div id="k3b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k3s">Tỷ suất lợi nhuận</div></div>
+    <div class="kc bl"><div class="klbl">LN Sau Giảm Giá</div><div class="kval" id="k2">–</div><div id="k2b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k2s"></div><div class="ksub" id="k2t" style="color:#f0a500;font-size:10px"></div></div>
+    <div class="kc gr"><div class="klbl">Biên LN Sau GG</div><div class="kval" id="k3">–</div><div id="k3b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k3s">TSLN sau chiết khấu</div><div class="ksub" id="k3t" style="color:#f0a500;font-size:10px"></div></div>
     <div class="kc rd"><div class="klbl">Giảm Giá</div><div class="kval" id="k4">–</div><div id="k4b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k4s"></div></div>
     <div class="kc bl"><div class="klbl">Cửa Hàng HĐ</div><div class="kval" id="k5">–</div><div id="k5b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k5s"></div></div>
   </div>
@@ -463,7 +463,7 @@ tr:last-child td{border-bottom:none}
     <div class="ch"><div class="ctitle">Bảng chi tiết tất cả cửa hàng</div></div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>#</th><th>Cửa hàng</th><th>Thương hiệu</th><th>Doanh thu (VNĐ)</th><th>Lợi nhuận (VNĐ)</th><th>Biên LN</th><th>Số lượng</th><th>Giảm giá (VNĐ)</th><th>Tỷ trọng DT</th></tr></thead>
+        <thead><tr><th>#</th><th>Cửa hàng</th><th>Thương hiệu</th><th>Doanh thu (VNĐ)</th><th>LN Trước GG</th><th>Biên Trước GG</th><th>LN Sau GG</th><th>Biên Sau GG</th><th>Số lượng</th><th>Giảm giá (VNĐ)</th><th>Tỷ trọng DT</th></tr></thead>
         <tbody id="stTbody"></tbody>
       </table>
     </div>
@@ -544,8 +544,10 @@ tr:last-child td{border-bottom:none}
               <th>Năm</th>
               <th style="text-align:right">Số lượng</th>
               <th style="text-align:right">Doanh thu (VNĐ)</th>
-              <th style="text-align:right">Lợi nhuận (VNĐ)</th>
-              <th style="text-align:right">Biên LN</th>
+              <th style="text-align:right;color:#805ad5">LN Trước GG</th>
+              <th style="text-align:right;color:#805ad5">Biên Trước GG</th>
+              <th style="text-align:right;color:#3182ce">LN Sau GG</th>
+              <th style="text-align:right;color:#3182ce">Biên Sau GG</th>
             </tr>
           </thead>
           <tbody id="pdTrendTbody"></tbody>
@@ -572,7 +574,7 @@ tr:last-child td{border-bottom:none}
     <div class="ch"><div class="ctitle">Bảng Top 30 sản phẩm bán chạy</div></div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>#</th><th>Sản phẩm</th><th>Danh mục</th><th>Doanh thu (VNĐ)</th><th>Số lượng</th><th>Lợi nhuận (VNĐ)</th><th>Biên LN</th><th>Tỷ trọng DT</th></tr></thead>
+        <thead><tr><th>#</th><th>Sản phẩm</th><th>Danh mục</th><th>Doanh thu (VNĐ)</th><th>Số lượng</th><th>LN Trước GG</th><th>Biên Trước GG</th><th>LN Sau GG</th><th>Biên Sau GG</th><th>Tỷ trọng DT</th></tr></thead>
         <tbody id="pdTbody"></tbody>
       </table>
     </div>
@@ -1551,10 +1553,13 @@ function resetF(){
 function renderKPI(){
   if(!filt.length){k0.innerHTML=k1.innerHTML=k2.innerHTML="0";k3.innerHTML="0.0%";k4.innerHTML=k5.innerHTML="0";k0s.innerHTML=k2s.innerHTML="Không có dữ liệu trong kỳ này";return;}
   const dt=filt.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const dtSau=filt.reduce((s,r)=>s+(r.tongThanhTien||0),0);
   const sl=filt.reduce((s,r)=>s+r.sl,0);
-  const ln=filt.reduce((s,r)=>s+(r.lnThuc||0),0);
+  const ln=filt.reduce((s,r)=>s+(r.lnThuc||0),0);           // LN sau GG
+  const lnTruoc=filt.reduce((s,r)=>s+(r.lnTruocGG||0),0);   // LN trước GG
   const gg=filt.reduce((s,r)=>s+(r.tongGiamGia||0),0);
-  const mg=dt>0?ln/dt:0;
+  const mg=dtSau>0?ln/dtSau:0;          // Biên sau GG
+  const mgTruoc=dt>0?lnTruoc/dt:0;     // Biên trước GG
   const ch=new Set(filt.map(r=>r.chiNhanh)).size;
   const months=[...new Set(filt.map(r=>r.thang))].sort();
   if(months.length>=2){
@@ -1569,6 +1574,11 @@ function renderKPI(){
   k0.innerHTML=fmtB(dt);k1.innerHTML=fmt(Math.round(sl));k2.innerHTML=fmtB(ln);
   k3.innerHTML=pct(mg);k4.innerHTML=fmtB(gg);k5.innerHTML=ch+' CH';
   k3.style.color=mg>=.3?'#2d9e5f':mg>=.2?'#d69e2e':'#e53e3e';
+  // Sub-text: LN trước GG & Biên trước GG
+  const k2t=document.getElementById('k2t');
+  if(k2t) k2t.innerHTML=`Trước GG: <b>${fmtB(lnTruoc)}</b>`;
+  const k3t=document.getElementById('k3t');
+  if(k3t){k3t.innerHTML=`Trước GG: <b>${pct(mgTruoc)}</b>`;}
   renderOvAlerts();
   // --- Badges ---
   const _selM=parseInt(document.getElementById('fMonth')?.value||0);
@@ -1863,8 +1873,12 @@ function renderCmpPage(){
 function renderStPage(){
   const gr={};
   D_CY.forEach(r=>{
-    if(!gr[r.chiNhanh])gr[r.chiNhanh]={dt:0,ln:0,sl:0,gg:0,brand:r.chiNhanh.startsWith('THEHOA')?'THE HOA':'PHÚC TEA'};
-    gr[r.chiNhanh].dt+=(r.thanhTien||0);gr[r.chiNhanh].ln+=(r.lnThuc||0);gr[r.chiNhanh].sl+=r.sl;gr[r.chiNhanh].gg+=(r.tongGiamGia||0);
+    if(!gr[r.chiNhanh])gr[r.chiNhanh]={dt:0,dtSau:0,ln:0,lnTruoc:0,sl:0,gg:0,brand:r.chiNhanh.startsWith('THEHOA')?'THE HOA':'PHÚC TEA'};
+    gr[r.chiNhanh].dt+=(r.thanhTien||0);
+    gr[r.chiNhanh].dtSau+=(r.tongThanhTien||0);
+    gr[r.chiNhanh].ln+=(r.lnThuc||0);
+    gr[r.chiNhanh].lnTruoc+=(r.lnTruocGG||0);
+    gr[r.chiNhanh].sl+=r.sl;gr[r.chiNhanh].gg+=(r.tongGiamGia||0);
   });
   const sorted=Object.entries(gr).sort((a,b)=>b[1].dt-a[1].dt);
   const total=sorted.reduce((s,x)=>s+x[1].dt,0);
@@ -1889,15 +1903,21 @@ function renderStPage(){
   });
   let tb='';
   sorted.forEach((x,i)=>{
-    const d=x[1],mg=d.dt>0?d.ln/d.dt:0,sh=d.dt/total;
+    const d=x[1];
+    const mgTruoc=d.dt>0?d.lnTruoc/d.dt:0;
+    const mgSau=d.dtSau>0?d.ln/d.dtSau:0;
+    const sh=d.dt/total;
+    const mc=v=>v>=.3?'#2d9e5f':v>=.2?'#d69e2e':'#e53e3e';
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'rk';
     tb+=`<tr>
       <td><span class="${rc}">#${i+1}</span></td>
       <td>${x[0]}</td>
       <td><span class="tag" style="background:${d.brand==='THE HOA'?'#f3e8ff':'#e8f5ee'};color:${d.brand==='THE HOA'?'#6b21a8':'#1a6b3c'}">${d.brand}</span></td>
       <td style="font-weight:700">${fmt(d.dt)}</td>
+      <td style="color:#805ad5;font-weight:700">${fmt(d.lnTruoc)}</td>
+      <td style="color:${mc(mgTruoc)};font-weight:700">${pct(mgTruoc)}</td>
       <td style="color:#3182ce;font-weight:700">${fmt(d.ln)}</td>
-      <td style="color:${mg>=.3?'#2d9e5f':mg>=.2?'#d69e2e':'#e53e3e'};font-weight:700">${pct(mg)}</td>
+      <td style="color:${mc(mgSau)};font-weight:700">${pct(mgSau)}</td>
       <td>${fmt(Math.round(d.sl))}</td>
       <td style="color:#e53e3e">${fmt(d.gg)}</td>
       <td><div class="bc"><div class="bb"><div class="bf" style="width:${Math.min(100,sh*500)}%"></div></div><span style="font-size:10px;white-space:nowrap">${pct(sh)}</span></div></td>
@@ -1929,14 +1949,18 @@ function renderPdPage(){
     const k=normalizeSPName(rawName).toLowerCase();
     const thisDate=(r.nam||0)*100+(r.thang||0);
     if(!gr[k]){
-      gr[k]={displayName:rawName,lastDate:thisDate,dt:0,ln:0,sl:0,cat:r.loaiHang||'Khác'};
+      gr[k]={displayName:rawName,lastDate:thisDate,dt:0,dtSau:0,ln:0,lnTruoc:0,sl:0,cat:r.loaiHang||'Khác'};
     }
     // Dùng tên từ tháng mới nhất
     if(thisDate>=gr[k].lastDate){
       gr[k].displayName=rawName;
       gr[k].lastDate=thisDate;
     }
-    gr[k].dt+=(r.thanhTien||0);gr[k].ln+=(r.lnThuc||0);gr[k].sl+=r.sl;
+    gr[k].dt+=(r.thanhTien||0);
+    gr[k].dtSau+=(r.tongThanhTien||0);
+    gr[k].ln+=(r.lnThuc||0);
+    gr[k].lnTruoc+=(r.lnTruocGG||0);
+    gr[k].sl+=r.sl;
     if(!cgr[r.loaiHang])cgr[r.loaiHang]={dt:0,sl:0,ln:0};
     cgr[r.loaiHang].dt+=(r.thanhTien||0);cgr[r.loaiHang].sl+=r.sl;cgr[r.loaiHang].ln+=(r.lnThuc||0);
   });
@@ -1965,7 +1989,11 @@ function renderPdPage(){
   });
   let tb='';
   sorted.slice(0,30).forEach((x,i)=>{
-    const d=x[1],mg=d.dt>0?d.ln/d.dt:0,sh=d.dt/total;
+    const d=x[1];
+    const mgTruoc=d.dt>0?d.lnTruoc/d.dt:0;
+    const mgSau=d.dtSau>0?d.ln/d.dtSau:0;
+    const sh=d.dt/total;
+    const mc=v=>v>=.3?'#2d9e5f':v>=.2?'#d69e2e':'#e53e3e';
     const rc=i===0?'r1':i===1?'r2':i===2?'r3':'rk';
     tb+=`<tr>
       <td><span class="${rc}">#${i+1}</span></td>
@@ -1973,8 +2001,10 @@ function renderPdPage(){
       <td><span class="tag tag-g">${d.cat}</span></td>
       <td style="font-weight:700">${fmt(d.dt)}</td>
       <td>${fmt(Math.round(d.sl))}</td>
+      <td style="color:#805ad5;font-weight:700">${fmt(d.lnTruoc)}</td>
+      <td style="color:${mc(mgTruoc)};font-weight:700">${pct(mgTruoc)}</td>
       <td style="color:#3182ce;font-weight:700">${fmt(d.ln)}</td>
-      <td style="color:${mg>=.3?'#2d9e5f':mg>=.2?'#d69e2e':'#e53e3e'};font-weight:700">${pct(mg)}</td>
+      <td style="color:${mc(mgSau)};font-weight:700">${pct(mgSau)}</td>
       <td><div class="bc"><div class="bb"><div class="bf" style="width:${Math.min(100,sh*500)}%"></div></div><span style="font-size:10px;white-space:nowrap">${pct(sh)}</span></div></td>
     </tr>`;
   });
@@ -2101,10 +2131,12 @@ function renderPdTrend(){
   const byMonth={};
   inRange.forEach(r=>{
     const k=`${r.nam}-${String(r.thang).padStart(2,'0')}`;
-    if(!byMonth[k])byMonth[k]={nam:r.nam,thang:r.thang,sl:0,dt:0,ln:0};
+    if(!byMonth[k])byMonth[k]={nam:r.nam,thang:r.thang,sl:0,dt:0,dtSau:0,ln:0,lnTruoc:0};
     byMonth[k].sl+=(r.sl||0);
     byMonth[k].dt+=(r.thanhTien||0);
+    byMonth[k].dtSau+=(r.tongThanhTien||0);
     byMonth[k].ln+=(r.lnThuc||0);
+    byMonth[k].lnTruoc+=(r.lnTruocGG||0);
   });
   const entries=Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]));
 
@@ -2113,9 +2145,13 @@ function renderPdTrend(){
 
   const totalSL=entries.reduce((s,[,v])=>s+v.sl,0);
   const totalDT=entries.reduce((s,[,v])=>s+v.dt,0);
+  const totalDTSau=entries.reduce((s,[,v])=>s+v.dtSau,0);
   const totalLN=entries.reduce((s,[,v])=>s+v.ln,0);
+  const totalLNTruoc=entries.reduce((s,[,v])=>s+v.lnTruoc,0);
   const avgSL=entries.length?totalSL/entries.length:0;
-  const mg=totalDT>0?totalLN/totalDT:0;
+  const mg=totalDTSau>0?totalLN/totalDTSau:0;
+  const mgTruoc=totalDT>0?totalLNTruoc/totalDT:0;
+  const mc=v=>v>=.3?'#2d9e5f':v>=.2?'#d69e2e':'#e53e3e';
 
   // KPI cards
   const kpiEl=document.getElementById('pdTrendKPI');
@@ -2130,15 +2166,15 @@ function renderPdTrend(){
       <div class="kval" style="font-size:16px">${fmtB(totalDT)}</div>
       <div class="ksub">VNĐ</div>
     </div>
-    <div class="kc go" style="text-align:center">
-      <div class="klbl">Lợi nhuận</div>
-      <div class="kval" style="font-size:16px">${fmtB(totalLN)}</div>
-      <div class="ksub">Biên: ${pct(mg)}</div>
-    </div>
     <div class="kc" style="text-align:center;border-left-color:#805ad5">
-      <div class="klbl">TB / tháng</div>
-      <div class="kval">${fmt(Math.round(avgSL))}</div>
-      <div class="ksub">sản lượng</div>
+      <div class="klbl">LN Trước GG</div>
+      <div class="kval" style="font-size:16px;color:#805ad5">${fmtB(totalLNTruoc)}</div>
+      <div class="ksub">Biên: <b style="color:${mc(mgTruoc)}">${pct(mgTruoc)}</b></div>
+    </div>
+    <div class="kc go" style="text-align:center">
+      <div class="klbl">LN Sau GG</div>
+      <div class="kval" style="font-size:16px">${fmtB(totalLN)}</div>
+      <div class="ksub">Biên: <b style="color:${mc(mg)}">${pct(mg)}</b></div>
     </div>`;
 
   // Biểu đồ
@@ -2194,14 +2230,17 @@ function renderPdTrend(){
   // Bảng chi tiết
   let tb='';
   entries.forEach(([,v])=>{
-    const m=v.dt>0?v.ln/v.dt:0;
+    const mT=v.dt>0?v.lnTruoc/v.dt:0;
+    const mS=v.dtSau>0?v.ln/v.dtSau:0;
     tb+=`<tr>
       <td style="font-weight:600">Tháng ${v.thang}</td>
       <td>${v.nam}</td>
       <td style="text-align:right;font-weight:700;color:#1a6b3c">${fmt(Math.round(v.sl))}</td>
       <td style="text-align:right;font-weight:700">${fmt(v.dt)}</td>
+      <td style="text-align:right;color:#805ad5;font-weight:700">${fmt(v.lnTruoc)}</td>
+      <td style="text-align:right;font-weight:700;color:${mc(mT)}">${pct(mT)}</td>
       <td style="text-align:right;color:#3182ce;font-weight:700">${fmt(v.ln)}</td>
-      <td style="text-align:right;font-weight:700;color:${m>=.3?'#2d9e5f':m>=.2?'#d69e2e':'#e53e3e'}">${pct(m)}</td>
+      <td style="text-align:right;font-weight:700;color:${mc(mS)}">${pct(mS)}</td>
     </tr>`;
   });
   document.getElementById('pdTrendTbody').innerHTML=tb;
@@ -2211,8 +2250,10 @@ function renderPdTrend(){
     <td colspan="2" style="font-weight:700;color:#1a6b3c">Tổng cộng</td>
     <td style="text-align:right;font-weight:800;font-size:14px;color:#1a6b3c">${fmt(Math.round(totalSL))}</td>
     <td style="text-align:right;font-weight:800">${fmt(totalDT)}</td>
+    <td style="text-align:right;font-weight:800;color:#805ad5">${fmt(totalLNTruoc)}</td>
+    <td style="text-align:right;font-weight:800;color:${mc(mgTruoc)}">${pct(mgTruoc)}</td>
     <td style="text-align:right;font-weight:800;color:#3182ce">${fmt(totalLN)}</td>
-    <td style="text-align:right;font-weight:800;color:${mg>=.3?'#2d9e5f':mg>=.2?'#d69e2e':'#e53e3e'}">${pct(mg)}</td>
+    <td style="text-align:right;font-weight:800;color:${mc(mg)}">${pct(mg)}</td>
   </tr>`;
 }
 
