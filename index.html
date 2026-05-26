@@ -301,12 +301,12 @@ tr:last-child td{border-bottom:none}
     <div class="ch">
       <div><div class="ctitle">Doanh Thu Theo Ngày</div><div class="csub" id="dailyChartSub">Trong tháng đang xem</div></div>
       <div class="cact">
-        <button class="tb on" id="dDT" onclick="setDayM('dt',this)">Doanh thu</button>
-        <button class="tb" id="dLN" onclick="setDayM('ln',this)">Lợi nhuận</button>
-        <button class="tb" id="dSL" onclick="setDayM('sl',this)">Số lượng</button>
+        <button class="tb on" id="dViewChart" onclick="setDayView('chart',this)">📊 Biểu đồ</button>
+        <button class="tb" id="dViewTable" onclick="setDayView('table',this)">📋 Bảng</button>
       </div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="cDaily"></canvas></div>
+    <div id="dailyChartWrap" style="position:relative;height:220px"><canvas id="cDaily"></canvas></div>
+    <div id="dailyTableWrap" style="display:none;max-height:420px;overflow-y:auto"><div id="dailyTable"></div></div>
   </div>
 
   <!-- Doanh thu theo tuần -->
@@ -1718,20 +1718,24 @@ function renderOvAlerts(){
 }
 
 // ===== DOANH THU THEO NGÀY =====
-let dayM='dt';
-function setDayM(m,el){dayM=m;document.querySelectorAll('#dDT,#dLN,#dSL').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderDailyChart();}
-function renderDailyChart(){
-  // Lấy tháng/năm đang xem (ưu tiên filter tháng, fallback tháng mới nhất trong filt)
+let dayM='dt', dayView='chart';
+function setDayView(v,el){
+  dayView=v;
+  document.querySelectorAll('#dViewChart,#dViewTable').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('dailyChartWrap').style.display=v==='chart'?'block':'none';
+  document.getElementById('dailyTableWrap').style.display=v==='table'?'block':'none';
+  renderDailyChart();
+}
+function _buildDailyData(){
   const selM=parseInt(document.getElementById('fMonth')?.value||0);
   const selY=parseInt(document.getElementById('fYear')?.value||new Date().getFullYear());
   const src=selM?filt.filter(r=>r.thang===selM&&r.nam===selY):filt;
   const dispM=selM?selM:[...new Set(filt.map(r=>r.thang))].sort((a,b)=>b-a)[0];
-  const dispY=selY;
-  // Group by day
   const gr={};
   src.forEach(r=>{
     if(!r.ngay)return;
-    const d=r.ngay.slice(8,10); // ngày trong tháng dd
+    const d=r.ngay.slice(8,10);
     if(!gr[d])gr[d]={dt:0,ln:0,lnTruoc:0,sl:0};
     gr[d].dt+=(r.thanhTien||0);
     gr[d].ln+=(r.lnThuc||0);
@@ -1739,11 +1743,16 @@ function renderDailyChart(){
     gr[d].sl+=(r.sl||0);
   });
   const lbls=Object.keys(gr).sort();
+  return{gr,lbls,dispM,selY};
+}
+function renderDailyChart(){
+  const{gr,lbls,dispM,selY}=_buildDailyData();
+  const sub=document.getElementById('dailyChartSub');
+  if(sub)sub.textContent=`Tháng ${dispM}/${selY} · ${lbls.length} ngày`;
+  if(dayView==='table'){renderDailyTable(gr,lbls,dispM,selY);return;}
   const cMap={dt:'#1a6b3c',ln:'#3182ce',lnTruoc:'#805ad5',sl:'#f0a500'};
   const lMap={dt:'Doanh thu',ln:'LN sau GG',lnTruoc:'LN trước GG',sl:'Số lượng'};
   const vals=lbls.map(d=>gr[d][dayM]);
-  const sub=document.getElementById('dailyChartSub');
-  if(sub)sub.textContent=`Tháng ${dispM}/${dispY} · ${lbls.length} ngày`;
   dc('day');
   CH['day']=new Chart(document.getElementById('cDaily').getContext('2d'),{
     type:'bar',
@@ -1759,6 +1768,59 @@ function renderDailyChart(){
       scales:{y:{ticks:{callback:v=>dayM==='sl'?v:fmtB(v)},grid:{color:'#f0f0f0'}},
         x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0}}}}
   });
+}
+function renderDailyTable(gr,lbls,dispM,selY){
+  const tbl=document.getElementById('dailyTable');
+  if(!tbl)return;
+  const totalDT=lbls.reduce((s,d)=>s+gr[d].dt,0);
+  const avgDT=lbls.length?totalDT/lbls.length:0;
+  const dlt=(cur,prev)=>{
+    if(!prev||!cur)return'<span style="color:#aaa">–</span>';
+    const r=(cur-prev)/prev;
+    const cl=r>=0.02?'#1a6b3c':r<=-0.02?'#c53030':'#888';
+    return`<span style="color:${cl};font-weight:700">${r>=0?'▲':'▼'} ${Math.abs(r*100).toFixed(0)}%</span>`;
+  };
+  let h=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:#f0f7f2;position:sticky;top:0">
+      <th style="padding:7px 10px;text-align:left;color:#1a6b3c">Ngày</th>
+      <th style="padding:7px 10px;text-align:right;color:#1a6b3c">Doanh thu</th>
+      <th style="padding:7px 10px;text-align:right;color:#3182ce">LN sau GG</th>
+      <th style="padding:7px 10px;text-align:right;color:#805ad5">LN trước GG</th>
+      <th style="padding:7px 10px;text-align:right;color:#888">Số lượng</th>
+      <th style="padding:7px 10px;text-align:right;color:#888">vs Hôm trước</th>
+      <th style="padding:7px 10px;text-align:right;color:#888">vs TB ngày</th>
+    </tr></thead><tbody>`;
+  lbls.forEach((d,i)=>{
+    const row=gr[d];
+    const prev=i>0?gr[lbls[i-1]].dt:null;
+    const vsAvg=avgDT>0?((row.dt-avgDT)/avgDT):null;
+    const vsAvgTxt=vsAvg!==null?`<span style="color:${vsAvg>=0.02?'#1a6b3c':vsAvg<=-0.02?'#c53030':'#888'};font-weight:700">${vsAvg>=0?'▲':'▼'} ${Math.abs(vsAvg*100).toFixed(0)}%</span>`:'–';
+    const isSunSat=()=>{try{const dt=new Date(`${selY}-${String(dispM).padStart(2,'0')}-${d}`);return dt.getDay()===0||dt.getDay()===6;}catch{return false;}};
+    const rowBg=isSunSat()?'#fff9e6':i%2?'#fafafa':'#fff';
+    const lnColor=row.ln<0?'color:#c53030':'color:#3182ce';
+    h+=`<tr style="border-bottom:1px solid #eee;background:${rowBg}">
+      <td style="padding:6px 10px;font-weight:700">${parseInt(d)}/${dispM}${isSunSat()?' <span style="font-size:9px;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px">CN/T7</span>':''}</td>
+      <td style="padding:6px 10px;text-align:right;font-weight:600">${fmtB(row.dt)}</td>
+      <td style="padding:6px 10px;text-align:right;${lnColor}">${fmtB(row.ln)}</td>
+      <td style="padding:6px 10px;text-align:right;color:#805ad5">${fmtB(row.lnTruoc)}</td>
+      <td style="padding:6px 10px;text-align:right">${row.sl.toLocaleString('vi-VN')}</td>
+      <td style="padding:6px 10px;text-align:right">${dlt(row.dt,prev)}</td>
+      <td style="padding:6px 10px;text-align:right">${vsAvgTxt}</td>
+    </tr>`;
+  });
+  // Tổng
+  const totLN=lbls.reduce((s,d)=>s+gr[d].ln,0);
+  const totLNT=lbls.reduce((s,d)=>s+gr[d].lnTruoc,0);
+  const totSL=lbls.reduce((s,d)=>s+gr[d].sl,0);
+  h+=`<tr style="background:#e8f5ee;font-weight:700;border-top:2px solid #1a6b3c;position:sticky;bottom:0">
+    <td style="padding:7px 10px;color:#1a6b3c">Tổng (${lbls.length} ngày)</td>
+    <td style="padding:7px 10px;text-align:right">${fmtB(totalDT)}</td>
+    <td style="padding:7px 10px;text-align:right;color:#3182ce">${fmtB(totLN)}</td>
+    <td style="padding:7px 10px;text-align:right;color:#805ad5">${fmtB(totLNT)}</td>
+    <td style="padding:7px 10px;text-align:right">${totSL.toLocaleString('vi-VN')}</td>
+    <td colspan="2" style="padding:7px 10px;text-align:right;color:#888;font-size:11px">TB: ${fmtB(Math.round(avgDT))}/ngày</td>
+  </tr>`;
+  tbl.innerHTML=h+'</tbody></table>';
 }
 
 // ===== DOANH THU THEO TUẦN =====
