@@ -296,21 +296,35 @@ tr:last-child td{border-bottom:none}
       <div style="position:relative;height:250px"><canvas id="cCat"></canvas></div>
     </div>
   </div>
-  <div class="row22">
+  <!-- Doanh thu theo ngày -->
+  <div class="cc" style="margin-top:14px">
+    <div class="ch">
+      <div><div class="ctitle">Doanh Thu Theo Ngày</div><div class="csub" id="dailyChartSub">Trong tháng đang xem</div></div>
+      <div class="cact">
+        <button class="tb on" id="dDT" onclick="setDayM('dt',this)">Doanh thu</button>
+        <button class="tb" id="dLN" onclick="setDayM('ln',this)">Lợi nhuận</button>
+        <button class="tb" id="dSL" onclick="setDayM('sl',this)">Số lượng</button>
+      </div>
+    </div>
+    <div style="position:relative;height:220px"><canvas id="cDaily"></canvas></div>
+  </div>
+
+  <!-- Doanh thu theo tuần -->
+  <div class="row22" style="margin-top:14px">
     <div class="cc">
       <div class="ch">
-        <div><div class="ctitle">Top 10 Cửa Hàng</div><div class="csub">Xếp hạng theo doanh thu</div></div>
+        <div><div class="ctitle">Doanh Thu Theo Tuần</div><div class="csub" id="weeklyChartSub">Trong tháng đang xem</div></div>
         <div class="cact">
-          <button class="tb on" id="sDT" onclick="setSM('dt',this)">Doanh thu</button>
-          <button class="tb" id="sLN" onclick="setSM('ln',this)">Lợi nhuận</button>
+          <button class="tb on" id="wDT" onclick="setWeekM('dt',this)">Doanh thu</button>
+          <button class="tb" id="wLN" onclick="setWeekM('ln',this)">Lợi nhuận</button>
+          <button class="tb" id="wSL" onclick="setWeekM('sl',this)">Số lượng</button>
         </div>
       </div>
-      <div style="position:relative;height:220px"><canvas id="cStore"></canvas></div>
-      <div id="storeOvTable" style="margin-top:8px;font-size:11px;overflow-x:auto"></div>
+      <div style="position:relative;height:200px"><canvas id="cWeekly"></canvas></div>
     </div>
     <div class="cc">
-      <div class="ch"><div><div class="ctitle">So Sánh Tháng</div><div class="csub">Doanh thu &amp; Lợi nhuận T1 – T3</div></div></div>
-      <div style="position:relative;height:270px"><canvas id="cMComp"></canvas></div>
+      <div class="ch"><div><div class="ctitle">Bảng Tóm Tắt Tuần</div><div class="csub" id="weeklyTableSub">DT · LN · SL theo tuần</div></div></div>
+      <div id="weeklyTable" style="font-size:12px;overflow-x:auto"></div>
     </div>
   </div>
 </div>
@@ -1229,8 +1243,9 @@ function renderAll(){
   renderKPI();
   renderTrend();
   renderCat();
-  renderStoreOv();
-  renderMComp();
+  renderOvAlerts();
+  renderDailyChart();
+  renderWeeklyChart();
   // Render active tab if not overview
   const active=document.querySelector('.page.on');
   if(active){
@@ -1702,22 +1717,146 @@ function renderOvAlerts(){
   el.innerHTML=h;
 }
 
-// ===== SO SÁNH THÁNG (OVERVIEW) =====
-function renderMComp(){
-  const ms=[1,2,3];
-  const dt=ms.map(m=>filt.filter(r=>r.thang===m).reduce((s,r)=>s+(r.thanhTien||0),0));
-  const ln=ms.map(m=>filt.filter(r=>r.thang===m).reduce((s,r)=>s+(r.lnThuc||0),0));
-  dc('mc');
-  CH['mc']=new Chart(document.getElementById('cMComp').getContext('2d'),{
-    type:'bar',
-    data:{labels:ms.map(m=>MN[m]),datasets:[
-      {label:'Doanh thu',data:dt,backgroundColor:'#1a6b3c99',borderRadius:5,borderSkipped:false},
-      {label:'Lợi nhuận',data:ln,backgroundColor:'#3182ce99',borderRadius:5,borderSkipped:false}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{position:'top',labels:{font:{size:11}}},datalabels:{display:false}},
-      scales:{y:{ticks:{callback:v=>fmtB(v)},grid:{color:'#f0f0f0'}},x:{grid:{display:false}}}}
+// ===== DOANH THU THEO NGÀY =====
+let dayM='dt';
+function setDayM(m,el){dayM=m;document.querySelectorAll('#dDT,#dLN,#dSL').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderDailyChart();}
+function renderDailyChart(){
+  // Lấy tháng/năm đang xem (ưu tiên filter tháng, fallback tháng mới nhất trong filt)
+  const selM=parseInt(document.getElementById('fMonth')?.value||0);
+  const selY=parseInt(document.getElementById('fYear')?.value||new Date().getFullYear());
+  const src=selM?filt.filter(r=>r.thang===selM&&r.nam===selY):filt;
+  const dispM=selM?selM:[...new Set(filt.map(r=>r.thang))].sort((a,b)=>b-a)[0];
+  const dispY=selY;
+  // Group by day
+  const gr={};
+  src.forEach(r=>{
+    if(!r.ngay)return;
+    const d=r.ngay.slice(8,10); // ngày trong tháng dd
+    if(!gr[d])gr[d]={dt:0,ln:0,lnTruoc:0,sl:0};
+    gr[d].dt+=(r.thanhTien||0);
+    gr[d].ln+=(r.lnThuc||0);
+    gr[d].lnTruoc+=(r.lnTruocGG||0);
+    gr[d].sl+=(r.sl||0);
   });
+  const lbls=Object.keys(gr).sort();
+  const cMap={dt:'#1a6b3c',ln:'#3182ce',lnTruoc:'#805ad5',sl:'#f0a500'};
+  const lMap={dt:'Doanh thu',ln:'LN sau GG',lnTruoc:'LN trước GG',sl:'Số lượng'};
+  const vals=lbls.map(d=>gr[d][dayM]);
+  const sub=document.getElementById('dailyChartSub');
+  if(sub)sub.textContent=`Tháng ${dispM}/${dispY} · ${lbls.length} ngày`;
+  dc('day');
+  CH['day']=new Chart(document.getElementById('cDaily').getContext('2d'),{
+    type:'bar',
+    data:{labels:lbls.map(d=>`${parseInt(d)}/${dispM}`),datasets:[{
+      label:lMap[dayM],data:vals,
+      backgroundColor:vals.map(v=>v<0?'#fc8181aa':cMap[dayM]+'bb'),
+      borderColor:vals.map(v=>v<0?'#c53030':cMap[dayM]),
+      borderWidth:1,borderRadius:3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},datalabels:{display:false},
+        tooltip:{callbacks:{label:ctx=>dayM==='sl'?ctx.parsed.y+' ly':fmtB(ctx.parsed.y)}}},
+      scales:{y:{ticks:{callback:v=>dayM==='sl'?v:fmtB(v)},grid:{color:'#f0f0f0'}},
+        x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0}}}}
+  });
+}
+
+// ===== DOANH THU THEO TUẦN =====
+let weekM='dt';
+function setWeekM(m,el){weekM=m;document.querySelectorAll('#wDT,#wLN,#wSL').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderWeeklyChart();}
+function renderWeeklyChart(){
+  const selM=parseInt(document.getElementById('fMonth')?.value||0);
+  const selY=parseInt(document.getElementById('fYear')?.value||new Date().getFullYear());
+  const src=selM?filt.filter(r=>r.thang===selM&&r.nam===selY):filt;
+  const dispM=selM?selM:[...new Set(filt.map(r=>r.thang))].sort((a,b)=>b-a)[0];
+  // Group by week
+  const gr={};
+  src.forEach(r=>{
+    const w=r.tuan||Math.ceil(parseInt((r.ngay||'').slice(8,10)||1)/7);
+    const k=`Tuần ${w}`;
+    if(!gr[k])gr[k]={dt:0,ln:0,lnTruoc:0,sl:0,week:w};
+    gr[k].dt+=(r.thanhTien||0);
+    gr[k].ln+=(r.lnThuc||0);
+    gr[k].lnTruoc+=(r.lnTruocGG||0);
+    gr[k].sl+=(r.sl||0);
+  });
+  const lbls=Object.keys(gr).sort((a,b)=>gr[a].week-gr[b].week);
+  const cMap={dt:'#1a6b3c',ln:'#3182ce',sl:'#f0a500'};
+  const lMap={dt:'Doanh thu',ln:'LN sau GG',sl:'Số lượng'};
+  const vals=lbls.map(l=>gr[l][weekM]);
+  const sub=document.getElementById('weeklyChartSub');
+  if(sub)sub.textContent=`Tháng ${dispM}/${selY}`;
+  dc('wk');
+  CH['wk']=new Chart(document.getElementById('cWeekly').getContext('2d'),{
+    type:'bar',
+    data:{labels:lbls,datasets:[{
+      label:lMap[weekM]||'',data:vals,
+      backgroundColor:lbls.map((_,i)=>[cMap[weekM]+'dd','#38a16999','#4299e199','#9f7aea99'][i%4]),
+      borderRadius:6,borderSkipped:false
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},datalabels:{
+        display:true,anchor:'end',align:'end',
+        color:'#333',font:{size:10,weight:'700'},
+        formatter:v=>weekM==='sl'?v:fmtB(v)
+      }},
+      scales:{y:{ticks:{callback:v=>weekM==='sl'?v:fmtB(v)},grid:{color:'#f0f0f0'}},
+        x:{grid:{display:false}}}}
+  });
+  // Render bảng tuần
+  renderWeeklyTable(gr,lbls,selM,selY);
+}
+function renderWeeklyTable(gr,lbls,selM,selY){
+  const tbl=document.getElementById('weeklyTable');
+  if(!tbl)return;
+  const sub=document.getElementById('weeklyTableSub');
+  if(sub)sub.textContent=`Tháng ${selM||''}/${selY} — DT · LN · SL`;
+  const totalDT=lbls.reduce((s,l)=>s+gr[l].dt,0);
+  const pct=v=>totalDT>0?((v/totalDT)*100).toFixed(1)+'%':'–';
+  const dlt=(cur,prev)=>{
+    if(!prev||!cur)return'<span style="color:#aaa">–</span>';
+    const r=(cur-prev)/prev;
+    const cl=r>=0.02?'#1a6b3c':r<=-0.02?'#c53030':'#888';
+    return`<span style="color:${cl};font-weight:700">${r>=0?'▲':'▼'} ${Math.abs(r*100).toFixed(0)}%</span>`;
+  };
+  let h=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:#f0f7f2">
+      <th style="padding:6px 8px;text-align:left;color:#1a6b3c">Tuần</th>
+      <th style="padding:6px 8px;text-align:right;color:#1a6b3c">Doanh thu</th>
+      <th style="padding:6px 8px;text-align:right;color:#3182ce">LN sau GG</th>
+      <th style="padding:6px 8px;text-align:right;color:#805ad5">LN trước GG</th>
+      <th style="padding:6px 8px;text-align:right;color:#888">Số lượng</th>
+      <th style="padding:6px 8px;text-align:right;color:#888">Tỷ trọng</th>
+      <th style="padding:6px 8px;text-align:right;color:#888">vs Tuần trước</th>
+    </tr></thead><tbody>`;
+  lbls.forEach((l,i)=>{
+    const d=gr[l];
+    const prev=i>0?gr[lbls[i-1]].dt:null;
+    const mgSau=d.dt>0?(d.ln/d.dt*100).toFixed(1)+'%':'–';
+    h+=`<tr style="border-bottom:1px solid #eee;${i%2?'background:#fafafa':''}">
+      <td style="padding:6px 8px;font-weight:700;color:#1a6b3c">${l}</td>
+      <td style="padding:6px 8px;text-align:right;font-weight:600">${fmtB(d.dt)}</td>
+      <td style="padding:6px 8px;text-align:right;color:#3182ce">${fmtB(d.ln)} <span style="font-size:10px;color:#aaa">(${mgSau})</span></td>
+      <td style="padding:6px 8px;text-align:right;color:#805ad5">${fmtB(d.lnTruoc)}</td>
+      <td style="padding:6px 8px;text-align:right">${d.sl.toLocaleString('vi-VN')}</td>
+      <td style="padding:6px 8px;text-align:right">${pct(d.dt)}</td>
+      <td style="padding:6px 8px;text-align:right">${dlt(d.dt,prev)}</td>
+    </tr>`;
+  });
+  // Tổng
+  const totLN=lbls.reduce((s,l)=>s+gr[l].ln,0);
+  const totLNT=lbls.reduce((s,l)=>s+gr[l].lnTruoc,0);
+  const totSL=lbls.reduce((s,l)=>s+gr[l].sl,0);
+  h+=`<tr style="background:#e8f5ee;font-weight:700;border-top:2px solid #1a6b3c">
+    <td style="padding:6px 8px;color:#1a6b3c">Tổng</td>
+    <td style="padding:6px 8px;text-align:right">${fmtB(totalDT)}</td>
+    <td style="padding:6px 8px;text-align:right;color:#3182ce">${fmtB(totLN)}</td>
+    <td style="padding:6px 8px;text-align:right;color:#805ad5">${fmtB(totLNT)}</td>
+    <td style="padding:6px 8px;text-align:right">${totSL.toLocaleString('vi-VN')}</td>
+    <td style="padding:6px 8px;text-align:right">100%</td>
+    <td></td>
+  </tr>`;
+  tbl.innerHTML=h+'</tbody></table>';
 }
 
 // ===== STORE PIVOT =====
