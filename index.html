@@ -4997,6 +4997,20 @@ function getXuatKho(ten,m,y){
   }).reduce((s,r)=>s+(r.sl||0),0);
 }
 
+// Lấy giá vốn đơn vị tự động từ dữ liệu bán hàng (trung bình có trọng số: sum(tongGiaVon)/sum(sl))
+function getAutoGiaVon(ten){
+  const norm=s=>(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const nTen=norm(ten);
+  const matched=D_ALL.filter(r=>{
+    if(!r.sanPham)return false;
+    const ns=norm(r.sanPham);
+    return ns===nTen||ns.includes(nTen)||nTen.includes(ns);
+  });
+  const totalGV=matched.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const totalSL=matched.reduce((s,r)=>s+(r.sl||0),0);
+  return totalSL>0?Math.round(totalGV/totalSL):0;
+}
+
 function initInvTab(){
   // Set current month
   const now=new Date();
@@ -5047,9 +5061,12 @@ function renderInvTable(){
     else if(tonCuoi<=0){status='🔴 Hết hàng';sbg='#fff0f0';scl='#c53030';}
     else if(tonMin>0&&tonCuoi<=tonMin){status='⚠️ Sắp hết';sbg='#fffbea';scl='#7a5800';}
     else{status='✅ Đủ hàng';sbg='#e8f5ee';scl='#1a6b3c';}
-    const giaVon=gvMap[p.ten]??0;
-    const giaTriTon=tonCuoi>0?tonCuoi*giaVon:0;
-    return{...p,tonDau,tonDauAuto,nhap,xuat,tonMin,tonCuoi,hasData,status,sbg,scl,xuatAuto:xuatOverride===null,giaVon,giaTriTon};
+    const giaVonManual=gvMap[p.ten]??null;
+    const autoGV=getAutoGiaVon(p.ten);
+    const giaVon=giaVonManual!==null&&giaVonManual>0?giaVonManual:autoGV;
+    const giaVonIsAuto=!(giaVonManual!==null&&giaVonManual>0);
+    const giaTriTon=tonCuoi>0&&giaVon>0?tonCuoi*giaVon:0;
+    return{...p,tonDau,tonDauAuto,nhap,xuat,tonMin,tonCuoi,hasData,status,sbg,scl,xuatAuto:xuatOverride===null,giaVon,giaVonIsAuto,autoGV,giaTriTon};
   });
 
   // Filter theo mode
@@ -5119,9 +5136,10 @@ function renderInvTable(){
           <input type="number" min="0" value="${p.tonMin||''}" placeholder="0" style="${iStyle}"
             onchange="invSave(${m},${y},'${tenSafe}','tonMin',+this.value)" onfocus="this.select()">
         </td>
-        <td style="background:#fef9e7;text-align:right">
-          <input type="number" min="0" value="${p.giaVon||''}" placeholder="0" style="${iStyle};background:#fef9e7;color:#7a5800;width:82px"
-            onchange="invSaveGiaVon('${tenSafe}',+this.value)" onfocus="this.select()" title="Giá vốn (VNĐ/đơn vị)">
+        <td style="background:${p.giaVonIsAuto?'#fff9e6':'#fef3c7'};text-align:right" title="${p.giaVonIsAuto?'Tự động từ dữ liệu bán hàng':'Đã nhập tay'}">
+          <input type="number" min="0" value="${p.giaVonIsAuto?'':p.giaVon}" placeholder="${p.autoGV||0}" style="${iStyle};background:transparent;color:${p.giaVonIsAuto?'#b7791f':'#7a5800'};width:82px"
+            onchange="invSaveGiaVon('${tenSafe}',+this.value)" onfocus="this.select()">
+          ${p.giaVonIsAuto&&p.autoGV>0?'<div style="font-size:9px;color:#b7791f;text-align:right">auto</div>':''}
         </td>
         <td style="background:#fdf2f8;text-align:right;font-weight:700;color:#6b21a8;font-size:12px">${p.giaTriTon>0?p.giaTriTon.toLocaleString('vi-VN')+' ₫':'–'}</td>
         <td style="text-align:center"><span style="background:${p.sbg};color:${p.scl};padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">${p.status}</span></td>
@@ -5217,8 +5235,9 @@ function exportInvExcel(){
     const xuat=xuatOv!==null?xuatOv:getXuatKho(p.ten,m,y);
     const tonMin=getInvCell(all,m,y,p.ten,'tonMin')??0;
     const tonCuoi=tonDau+nhap-xuat;
-    const giaVon=gvMap[p.ten]??0;
-    const giaTriTon=tonCuoi>0?tonCuoi*giaVon:0;
+    const giaVonManual=gvMap[p.ten]??null;
+    const giaVon=giaVonManual!==null&&giaVonManual>0?giaVonManual:getAutoGiaVon(p.ten);
+    const giaTriTon=tonCuoi>0&&giaVon>0?tonCuoi*giaVon:0;
     tongGT+=giaTriTon;
     const status=tonCuoi<=0?'Hết hàng':tonMin>0&&tonCuoi<=tonMin?'Sắp hết':'Đủ hàng';
     if(p.cat!==curCat){curCat=p.cat;wsData.push([`📁 ${p.cat}`,'','','','','','','','','','','']);}
