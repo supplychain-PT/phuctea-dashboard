@@ -2111,7 +2111,7 @@ function renderPdTrend(){
   const rows=(D_ALL||[]).filter(r=>{
     if(!r.sanPham)return false;
     const nm=normalizeSPName(r.sanPham).toLowerCase();
-    return nm===normQ||nm.includes(normQ)||normQ.includes(nm);
+    return nm===normQ||nm.includes(normQ);
   });
 
   // Lọc theo khoảng thời gian
