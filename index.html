@@ -4948,8 +4948,11 @@ function saveGiaVon(ten,val){
   gv[ten]=val;
   localStorage.setItem(INV_GIAVON_KEY,JSON.stringify(gv));
 }
-function invSaveGiaVon(ten,val){
-  saveGiaVon(ten,isNaN(val)||val<0?0:val);
+function fmtDot(n){return n>0?Math.round(n).toLocaleString('vi-VN').replace(/,/g,'.'):'0';}
+function parseDot(s){return parseInt((s||'').replace(/\./g,'').replace(/,/g,''))||0;}
+function invSaveGiaVon(ten,rawStr){
+  const val=parseDot(rawStr);
+  saveGiaVon(ten,val<0?0:val);
   renderInvTable();
 }
 
@@ -5137,8 +5140,9 @@ function renderInvTable(){
             onchange="invSave(${m},${y},'${tenSafe}','tonMin',+this.value)" onfocus="this.select()">
         </td>
         <td style="background:${p.giaVonIsAuto?'#fff9e6':'#fef3c7'};text-align:right" title="${p.giaVonIsAuto?'Tự động từ dữ liệu bán hàng':'Đã nhập tay'}">
-          <input type="number" min="0" value="${p.giaVonIsAuto?'':p.giaVon}" placeholder="${p.autoGV||0}" style="${iStyle};background:transparent;color:${p.giaVonIsAuto?'#b7791f':'#7a5800'};width:82px"
-            onchange="invSaveGiaVon('${tenSafe}',+this.value)" onfocus="this.select()">
+          <input type="text" inputmode="numeric" value="${p.giaVonIsAuto?'':fmtDot(p.giaVon)}" placeholder="${p.autoGV>0?fmtDot(p.autoGV):'0'}" style="${iStyle};background:transparent;color:${p.giaVonIsAuto?'#b7791f':'#7a5800'};width:82px"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.')"
+            onchange="invSaveGiaVon('${tenSafe}',this.value)" onfocus="this.select()">
           ${p.giaVonIsAuto&&p.autoGV>0?'<div style="font-size:9px;color:#b7791f;text-align:right">auto</div>':''}
         </td>
         <td style="background:#fdf2f8;text-align:right;font-weight:700;color:#6b21a8;font-size:12px">${p.giaTriTon>0?p.giaTriTon.toLocaleString('vi-VN')+' ₫':'–'}</td>
