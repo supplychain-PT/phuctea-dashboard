@@ -5191,9 +5191,32 @@ function getAutoTonDau(all,m,y,ten){
   return {val:prevTonCuoi,auto:true};
 }
 
+// Cấu hình sản phẩm composite: xuất kho = tổng SL của nhiều sản phẩm POS
+// startDate: chỉ tính từ ngày này (YYYY-MM-DD), để trống = tính cả tháng
+const INV_COMPOSITE={
+  'Túi Đựng Trà (Trà Đen + Trà Xanh Lài)':{
+    sources:['trà đen','trà xanh lài'],
+    startDate:'2026-04-12'
+  }
+};
+
 // Lấy xuất kho từ dữ liệu bán hàng (tổng SL bán trong tháng)
 function getXuatKho(ten,m,y){
   const norm=s=>(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  // Kiểm tra composite rule
+  const comp=INV_COMPOSITE[ten];
+  if(comp){
+    const startDate=comp.startDate?new Date(comp.startDate):null;
+    return D_ALL.filter(r=>{
+      if(r.thang!==m||r.nam!==y||!r.sanPham)return false;
+      // Lọc từ ngày bắt đầu nếu trong cùng tháng/năm của startDate
+      if(startDate&&r.nam===startDate.getFullYear()&&r.thang===(startDate.getMonth()+1)){
+        if(!r.ngay||new Date(r.ngay)<startDate)return false;
+      }
+      const ns=norm(r.sanPham);
+      return comp.sources.some(src=>ns.includes(src));
+    }).reduce((s,r)=>s+(r.sl||0),0);
+  }
   const nTen=norm(ten);
   return D_ALL.filter(r=>{
     if(r.thang!==m||r.nam!==y||!r.sanPham)return false;
