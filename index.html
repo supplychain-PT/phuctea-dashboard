@@ -1646,10 +1646,12 @@ function renderKPI(){
   // LN vs KH
   const _lnKH=_selM&&_kpiCache['ln_kh_'+_selM]?_kpiCache['ln_kh_'+_selM]:null;
   if(_lnKH&&ln){const r=ln/_lnKH;_badge('k2b',(r>=1?'✅ ':'⚠️ ')+(r*100).toFixed(0)+'% vs KH',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k2b');
-  // TSLN vs KH — dùng công thức BOD (trước GG) để đồng nhất
+  // TSLN vs KH — dùng công thức BOD (trước GG), trừ MERCHANDISE
   const _tslnKH=_selM&&_kpiCache['tsln_kh_'+_selM]!=null?_kpiCache['tsln_kh_'+_selM]:null;
-  const _gvFiltBadge=filt.reduce((s,r)=>s+(r.tongGiaVon||0),0);
-  const _tslnTruoc=dt>0?(dt-_gvFiltBadge)/dt*100:0;
+  const _filtTSLNBadge=filt.filter(r=>!isTSLNExcluded(r));
+  const _dtTSLNBadge=_filtTSLNBadge.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const _gvFiltBadge=_filtTSLNBadge.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const _tslnTruoc=_dtTSLNBadge>0?(_dtTSLNBadge-_gvFiltBadge)/_dtTSLNBadge*100:0;
   if(_tslnKH!=null){const r=_tslnTruoc/_tslnKH;_badge('k3b','KH: '+_tslnKH.toFixed(1)+'%',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k3b');
   // SL, GG, CH — hide badges (no KH for these)
   _hideBadge('k1b');_hideBadge('k4b');_hideBadge('k5b');
@@ -1683,9 +1685,11 @@ function renderKPI(){
   if(ktlHint)ktlHint.style.display=(tlTT==null)?'block':'none';
   _kpiBadge('ktl_badge',tlTT,tlKH,false);
 
-  // 2. TSLN — dùng công thức BOD: (thanhTien - tongGiaVon) / thanhTien (trước GG)
-  const gvFilt=filt.reduce((s,r)=>s+(r.tongGiaVon||0),0);
-  const tslnTT_bod=dt>0?(dt-gvFilt)/dt*100:0; // BOD tsln_truoc
+  // 2. TSLN — dùng công thức BOD, trừ MERCHANDISE (không ảnh hưởng KPI 28%)
+  const filtTSLN=filt.filter(r=>!isTSLNExcluded(r));
+  const dtTSLN=filtTSLN.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const gvFilt=filtTSLN.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const tslnTT_bod=dtTSLN>0?(dtTSLN-gvFilt)/dtTSLN*100:0; // BOD tsln_truoc, không MERCHANDISE
   // Ưu tiên giá trị BOD cache cho tháng đang xem, fallback tính từ filt
   const tslnTT=(_kpiCache['tsln_tt_'+_selM]!=null&&_selM)?_kpiCache['tsln_tt_'+_selM]*100:tslnTT_bod;
   const tslnKH=_readKH('tsln_kh',_selM);
@@ -3115,8 +3119,9 @@ function renderBOD(){
   // Ghi cache để Tổng quan đọc
   if(ht_tt_m) _kpiCache['ht_tt_'+lastMonth]=ht_tt_m;
   if(tl_m!==null) _kpiCache['tl_tt_'+lastMonth]=tl_m*100;
-  // Cache TSLN trước GG theo công thức BOD
-  const tsln_truoc_m=tsln_truoc(rMon);
+  // Cache TSLN trước GG theo công thức BOD, trừ MERCHANDISE
+  const rMon_tsln=rMon.filter(r=>!isTSLNExcluded(r));
+  const tsln_truoc_m=tsln_truoc(rMon_tsln);
   _kpiCache['tsln_tt_'+lastMonth]=tsln_truoc_m; // dạng ratio (0.27 = 27%)
   const noHT = 'Nhập DT HT trong KPI';
   document.getElementById('bodHTGrid').innerHTML =
@@ -4286,6 +4291,10 @@ function _readKH(field, month){
   return v>0?v:null;
 }
 
+// ── Global: TSLN exclusion — không tính nhóm này khi so với KPI ─────────
+const TSLN_EXCL_CAT=new Set(['MERCHANDISE']);
+function isTSLNExcluded(r){ return TSLN_EXCL_CAT.has(r.loaiHang); }
+
 // ── Global: DT BH exclusion (dùng chung cho recalcKPI và BOD) ──────────
 const DT_BH_EXCL_CAT=new Set(['VD ĐỘC QUYỀN','HỆ THỐNG']);
 const DT_BH_EXCL_SP=['Combo 50 Móc Khoá Đủ Loại','Combo 200 Túi Giữ Nhiệt 2026.03','Combo 125 Bình Con Vịt'];
@@ -4306,16 +4315,17 @@ function recalcKPI(){
   for(var m=1;m<=12;m++){
     DT_ACT[m]=D_ALL.filter(r=>r.nam===2026&&r.thang===m&&!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
   }
-  // TSLN thực tế: trước GG = tongLoiNhuan/thanhTien, sau GG = tongLoiNhuan/tongThanhTien
+  // TSLN thực tế: trước GG = (thanhTien-tongGiaVon)/thanhTien, trừ nhóm MERCHANDISE
   var TSLN_ACT={}, TSLN_SAU={};
   for(var m=1;m<=12;m++){
     var rows=D_ALL.filter(r=>r.nam===2026&&r.thang===m);
-    var dt_truoc=rows.reduce((s,r)=>s+(r.thanhTien||0),0);
-    var dt_sau=rows.reduce((s,r)=>s+(r.tongThanhTien||0),0);
-    var ln=rows.reduce((s,r)=>s+(r.lnThuc||0),0);        // lnThuc=thanhTien-giaVon cho TSLN chính
-    var lnSau=rows.reduce((s,r)=>s+(r.tongLoiNhuan||0),0); // tongLoiNhuan=tongThanhTien-giaVon cho sau GG
-    TSLN_ACT[m]=dt_truoc>0?ln/dt_truoc:0;  // lnThuc/thanhTien = TSLN trên DT
-    TSLN_SAU[m]=dt_sau>0?lnSau/dt_sau:0;    // tongLoiNhuan/tongThanhTien = sau GG
+    var rowsKPI=rows.filter(r=>!isTSLNExcluded(r)); // bỏ MERCHANDISE khi tính KPI
+    var dt_truoc=rowsKPI.reduce((s,r)=>s+(r.thanhTien||0),0);
+    var dt_sau=rowsKPI.reduce((s,r)=>s+(r.tongThanhTien||0),0);
+    var gv_kpi=rowsKPI.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+    var lnSau=rowsKPI.reduce((s,r)=>s+(r.tongLoiNhuan||0),0);
+    TSLN_ACT[m]=dt_truoc>0?(dt_truoc-gv_kpi)/dt_truoc:0; // (DT-GV)/DT trước GG, không MERCHANDISE
+    TSLN_SAU[m]=dt_sau>0?lnSau/dt_sau:0;
   }
 
   function gV(id){const el=document.getElementById(id);return el&&el.value?pN(el.value):null;}
