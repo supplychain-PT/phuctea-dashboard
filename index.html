@@ -292,6 +292,7 @@ tr:last-child td{border-bottom:none}
         </div>
         <div style="font-size:11px;color:#888;margin-top:2px" id="ktl_kh">KH: –</div>
         <div id="ktl_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+        <div id="ktl_hint" style="display:none;font-size:10px;color:#a0aec0;margin-top:3px">💡 Nhập DT HT trong tab KPI</div>
       </div>
       <div style="flex:1;min-width:190px;background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
         <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:4px">Tỷ suất Lợi nhuận</div>
@@ -310,6 +311,7 @@ tr:last-child td{border-bottom:none}
         </div>
         <div style="font-size:11px;color:#888;margin-top:2px" id="kcn_kh">KH: –</div>
         <div id="kcn_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+        <div id="kcn_hint" style="display:none;font-size:10px;color:#a0aec0;margin-top:3px">💡 Kết nối Google Sheet CN</div>
       </div>
     </div>
   </div>
@@ -1437,6 +1439,8 @@ async function fetchSalesFromSheet(){
       statusEl.innerHTML=`✅ Live · <b>${allData.length.toLocaleString('vi-VN')}</b> dòng · ${now}`;
       statusEl.style.color='#1a6b3c';
     }
+    // Cập nhật cache KPI sau khi data mới về
+    if(typeof recalcKPI==='function') recalcKPI();
   }catch(e){
     console.error('fetchSalesFromSheet:',e);
     if(statusEl){
@@ -1664,12 +1668,17 @@ function renderKPI(){
   }
 
   // 1. Tỷ lệ DT BH / DT HT
-  const tlTT=_kpiCache['tl_tt_'+_selM]??null;
+  // Tính trực tiếp từ filt + ht_tt cached (không phụ thuộc vào tl_tt cache cũ)
+  const htTT_m=_kpiCache['ht_tt_'+_selM]??null;
+  const dtBH_filt=filt.filter(r=>!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
+  const tlTT=htTT_m&&htTT_m>0 ? dtBH_filt/htTT_m*100 : (_kpiCache['tl_tt_'+_selM]??null);
   const tlKH=_kpiCache['tl_kh_'+_selM]??null;
   const ktlTT=document.getElementById('ktl_tt');
   const ktlKH=document.getElementById('ktl_kh');
+  const ktlHint=document.getElementById('ktl_hint');
   if(ktlTT)ktlTT.textContent=tlTT!=null?tlTT.toFixed(2)+'%':'–';
   if(ktlKH)ktlKH.textContent='KH: '+(tlKH!=null?tlKH.toFixed(2)+'%':'–');
+  if(ktlHint)ktlHint.style.display=(tlTT==null)?'block':'none';
   _kpiBadge('ktl_badge',tlTT,tlKH,false);
 
   // 2. TSLN
@@ -1683,12 +1692,16 @@ function renderKPI(){
 
   // 3. Thu hồi CN
   const selY=parseInt(document.getElementById('fYear')?.value||2026);
-  const cnTT=_kpiCache['cn_tt_raw_'+_selM]??_cnKPI[selY+'-'+_selM]??null;
+  const cnTT=(_kpiCache['cn_tt_raw_'+_selM]!==undefined&&_kpiCache['cn_tt_raw_'+_selM]!==null)
+    ? _kpiCache['cn_tt_raw_'+_selM]
+    : (_cnKPI[selY+'-'+_selM]||null);
   const cnKH=_kpiCache['cn_kh_'+_selM]??null;
   const kcnTT=document.getElementById('kcn_tt');
   const kcnKH=document.getElementById('kcn_kh');
-  if(kcnTT)kcnTT.textContent=cnTT!=null?fmtB(cnTT):'–';
+  const kcnHint=document.getElementById('kcn_hint');
+  if(kcnTT)kcnTT.textContent=cnTT!=null&&cnTT>0?fmtB(cnTT):'–';
   if(kcnKH)kcnKH.textContent='KH: '+(cnKH!=null?fmtB(cnKH):'–');
+  if(kcnHint)kcnHint.style.display=(cnTT==null||cnTT===0)?'block':'none';
   _kpiBadge('kcn_badge',cnTT,cnKH,true);
 }
 
@@ -4311,6 +4324,7 @@ function recalcKPI(){
     // Cache để Tổng quan đọc
     _kpiCache['tl_kh_'+m]=tl_kh;
     _kpiCache['tl_tt_'+m]=tl_tt;
+    _kpiCache['ht_tt_'+m]=ht_tt;   // DT HT thực tế (để renderKPI tính lại nếu cần)
     _kpiCache['cn_kh_'+m]=gV('cn_kh_'+m);
     // KPI: tỷ lệ TT / tỷ lệ KH
     var dt_kpi = (tl_tt!==null&&tl_kh!==null&&tl_kh>0) ? tl_tt/tl_kh : null;
