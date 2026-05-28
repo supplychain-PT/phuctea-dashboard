@@ -1646,9 +1646,11 @@ function renderKPI(){
   // LN vs KH
   const _lnKH=_selM&&_kpiCache['ln_kh_'+_selM]?_kpiCache['ln_kh_'+_selM]:null;
   if(_lnKH&&ln){const r=ln/_lnKH;_badge('k2b',(r>=1?'✅ ':'⚠️ ')+(r*100).toFixed(0)+'% vs KH',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k2b');
-  // TSLN vs KH
+  // TSLN vs KH — dùng công thức BOD (trước GG) để đồng nhất
   const _tslnKH=_selM&&_kpiCache['tsln_kh_'+_selM]!=null?_kpiCache['tsln_kh_'+_selM]:null;
-  if(_tslnKH!=null){const r=mg*100/_tslnKH;_badge('k3b','KH: '+_tslnKH.toFixed(1)+'%',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k3b');
+  const _gvFiltBadge=filt.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const _tslnTruoc=dt>0?(dt-_gvFiltBadge)/dt*100:0;
+  if(_tslnKH!=null){const r=_tslnTruoc/_tslnKH;_badge('k3b','KH: '+_tslnKH.toFixed(1)+'%',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k3b');
   // SL, GG, CH — hide badges (no KH for these)
   _hideBadge('k1b');_hideBadge('k4b');_hideBadge('k5b');
 
@@ -1681,8 +1683,11 @@ function renderKPI(){
   if(ktlHint)ktlHint.style.display=(tlTT==null)?'block':'none';
   _kpiBadge('ktl_badge',tlTT,tlKH,false);
 
-  // 2. TSLN
-  const tslnTT=mg*100; // % từ filt hiện tại
+  // 2. TSLN — dùng công thức BOD: (thanhTien - tongGiaVon) / thanhTien (trước GG)
+  const gvFilt=filt.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const tslnTT_bod=dt>0?(dt-gvFilt)/dt*100:0; // BOD tsln_truoc
+  // Ưu tiên giá trị BOD cache cho tháng đang xem, fallback tính từ filt
+  const tslnTT=(_kpiCache['tsln_tt_'+_selM]!=null&&_selM)?_kpiCache['tsln_tt_'+_selM]*100:tslnTT_bod;
   const tslnKH=_readKH('tsln_kh',_selM);
   const ktsln=document.getElementById('ktsln_tt');
   const ktsln_kh=document.getElementById('ktsln_kh');
@@ -3110,6 +3115,9 @@ function renderBOD(){
   // Ghi cache để Tổng quan đọc
   if(ht_tt_m) _kpiCache['ht_tt_'+lastMonth]=ht_tt_m;
   if(tl_m!==null) _kpiCache['tl_tt_'+lastMonth]=tl_m*100;
+  // Cache TSLN trước GG theo công thức BOD
+  const tsln_truoc_m=tsln_truoc(rMon);
+  _kpiCache['tsln_tt_'+lastMonth]=tsln_truoc_m; // dạng ratio (0.27 = 27%)
   const noHT = 'Nhập DT HT trong KPI';
   document.getElementById('bodHTGrid').innerHTML =
     cell('Tỷ lệ Trong ngày', tl_d, tl_kh_m?tl_kh_m/100:null, true, noHT) +
