@@ -1668,11 +1668,11 @@ function renderKPI(){
   }
 
   // 1. Tỷ lệ DT BH / DT HT
-  // Tính trực tiếp từ filt + ht_tt cached (không phụ thuộc vào tl_tt cache cũ)
-  const htTT_m=_kpiCache['ht_tt_'+_selM]??null;
+  // Dùng _readKH để đọc từ cache + DOM (giống BOD), tính trực tiếp từ filt
+  const htTT_m=_readKH('ht_tt',_selM);
   const dtBH_filt=filt.filter(r=>!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
-  const tlTT=htTT_m&&htTT_m>0 ? dtBH_filt/htTT_m*100 : (_kpiCache['tl_tt_'+_selM]??null);
-  const tlKH=_kpiCache['tl_kh_'+_selM]??null;
+  const tlTT=htTT_m&&htTT_m>0 ? dtBH_filt/htTT_m*100 : null;
+  const tlKH=_readKH('tl_kh',_selM);
   const ktlTT=document.getElementById('ktl_tt');
   const ktlKH=document.getElementById('ktl_kh');
   const ktlHint=document.getElementById('ktl_hint');
@@ -1683,25 +1683,24 @@ function renderKPI(){
 
   // 2. TSLN
   const tslnTT=mg*100; // % từ filt hiện tại
-  const tslnKH=_kpiCache['tsln_kh_'+_selM]??null;
+  const tslnKH=_readKH('tsln_kh',_selM);
   const ktsln=document.getElementById('ktsln_tt');
   const ktsln_kh=document.getElementById('ktsln_kh');
   if(ktsln)ktsln.textContent=tslnTT.toFixed(1)+'%';
   if(ktsln_kh)ktsln_kh.textContent='KH: '+(tslnKH!=null?tslnKH.toFixed(1)+'%':'–');
   _kpiBadge('ktsln_badge',tslnTT,tslnKH,false);
 
-  // 3. Thu hồi CN
+  // 3. Thu hồi CN — CN cũ đã thu (J:K) từ _cnKPI, fallback cache
   const selY=parseInt(document.getElementById('fYear')?.value||2026);
-  const cnTT=(_kpiCache['cn_tt_raw_'+_selM]!==undefined&&_kpiCache['cn_tt_raw_'+_selM]!==null)
-    ? _kpiCache['cn_tt_raw_'+_selM]
-    : (_cnKPI[selY+'-'+_selM]||null);
-  const cnKH=_kpiCache['cn_kh_'+_selM]??null;
+  const cnTT_raw=_kpiCache['cn_tt_raw_'+_selM];
+  const cnTT=(cnTT_raw!==undefined&&cnTT_raw!==null) ? cnTT_raw : (_cnKPI[selY+'-'+_selM]||null);
+  const cnKH=_readKH('cn_kh',_selM);
   const kcnTT=document.getElementById('kcn_tt');
   const kcnKH=document.getElementById('kcn_kh');
   const kcnHint=document.getElementById('kcn_hint');
   if(kcnTT)kcnTT.textContent=cnTT!=null&&cnTT>0?fmtB(cnTT):'–';
   if(kcnKH)kcnKH.textContent='KH: '+(cnKH!=null?fmtB(cnKH):'–');
-  if(kcnHint)kcnHint.style.display=(cnTT==null||cnTT===0)?'block':'none';
+  if(kcnHint)kcnHint.style.display=(!cnTT||cnTT===0)?'block':'none';
   _kpiBadge('kcn_badge',cnTT,cnKH,true);
 }
 
@@ -3108,6 +3107,9 @@ function renderBOD(){
   const dtBH_m=sumF(rMon.filter(r=>!isBHExcluded(r)),'thanhTien');
   const tl_d = ht_tt_m&&ht_tt_m>0 ? dtBH_d*daysInMonth/lastDay/ht_tt_m : null; // ước tính
   const tl_m = ht_tt_m&&ht_tt_m>0 ? dtBH_m/ht_tt_m : null;
+  // Ghi cache để Tổng quan đọc
+  if(ht_tt_m) _kpiCache['ht_tt_'+lastMonth]=ht_tt_m;
+  if(tl_m!==null) _kpiCache['tl_tt_'+lastMonth]=tl_m*100;
   const noHT = 'Nhập DT HT trong KPI';
   document.getElementById('bodHTGrid').innerHTML =
     cell('Tỷ lệ Trong ngày', tl_d, tl_kh_m?tl_kh_m/100:null, true, noHT) +
@@ -3126,9 +3128,11 @@ function renderBOD(){
   // CN BH = Tổng − CN Cũ
   const cn_bh_m = Math.max(0, cn_tong_m - cn_cu_m);
   const cn_bh_y = Math.max(0, cn_tong_y - cn_cu_y);
-  // KH thu CN tháng / năm
+  // KH thu CN tháng / năm — cache lại để Tổng quan đọc
   const cn_kh_el = document.getElementById('cn_kh_'+lastMonth);
   const cn_kh_m = cn_kh_el&&cn_kh_el.value ? pN(cn_kh_el.value) : null;
+  if(cn_cu_m) _kpiCache['cn_tt_raw_'+lastMonth]=cn_cu_m;
+  if(cn_kh_m) _kpiCache['cn_kh_'+lastMonth]=cn_kh_m;
   const cn_kh_y = Array.from({length:12},(_,i)=>{
     const e=document.getElementById('cn_kh_'+(i+1)); return e&&e.value?pN(e.value)||0:0;
   }).reduce((s,v)=>s+v,0)||null;
@@ -4045,6 +4049,7 @@ function showTab(name,el){
   if(name==='miss')renderMissPage();
   if(name==='week'){setWeek7d();}
   if(name==='order')renderOrderTrack();
+  if(name==='ov'){recalcKPI();renderAll();}
   if(name==='kpi'){loadKPI();fetchKPIFromSheet().then(()=>recalcKPI());}
   if(name==='bod'){loadKPI();renderBOD();}
   if(name==='noxau'){
@@ -4262,6 +4267,16 @@ function setSheetField(id, rawVal){
 
 // Auto-refresh mỗi 5 phút
 setInterval(fetchKPIFromSheet, 5*60*1000);
+
+// ── Global helper: đọc giá trị KH/TT từ cache hoặc DOM (giống getKH trong BOD) ──
+function _readKH(field, month){
+  const k=field+'_'+month;
+  if(_kpiCache[k]!==undefined&&_kpiCache[k]!==null) return _kpiCache[k];
+  const el=document.getElementById(k);
+  if(!el||!el.value) return null;
+  const v=parseFloat((el.value||'').replace(/\./g,'').replace(/,/g,'.'))||0;
+  return v>0?v:null;
+}
 
 // ── Global: DT BH exclusion (dùng chung cho recalcKPI và BOD) ──────────
 const DT_BH_EXCL_CAT=new Set(['VD ĐỘC QUYỀN','HỆ THỐNG']);
