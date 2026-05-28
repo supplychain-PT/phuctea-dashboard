@@ -279,6 +279,41 @@ tr:last-child td{border-bottom:none}
     <div class="kc rd"><div class="klbl">Giảm Giá</div><div class="kval" id="k4">–</div><div id="k4b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k4s"></div></div>
     <div class="kc bl"><div class="klbl">Cửa Hàng HĐ</div><div class="kval" id="k5">–</div><div id="k5b" class="kbadge kb-x" style="display:none"></div><div class="ksub" id="k5s"></div></div>
   </div>
+
+  <!-- KPI TT/KH theo tháng -->
+  <div id="ovKPIComp" style="display:none;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:8px;letter-spacing:.3px">📊 KPI THÁNG — THỰC TẾ VS KẾ HOẠCH</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:190px;background:#f0f7f2;border:1px solid #b7dfc8;border-left:4px solid #1a6b3c;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#1a6b3c;margin-bottom:4px">Tỷ lệ DT BH / DT HT</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:24px;font-weight:800;color:#1a6b3c" id="ktl_tt">–</span>
+          <span style="font-size:10px;color:#888">thực tế</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="ktl_kh">KH: –</div>
+        <div id="ktl_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+      </div>
+      <div style="flex:1;min-width:190px;background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:4px">Tỷ suất Lợi nhuận</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:24px;font-weight:800;color:#2b6cb0" id="ktsln_tt">–</span>
+          <span style="font-size:10px;color:#888">thực tế</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="ktsln_kh">KH: –</div>
+        <div id="ktsln_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+      </div>
+      <div style="flex:1;min-width:190px;background:#fefce8;border:1px solid #fde68a;border-left:4px solid #d69e2e;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px">Thu hồi Công nợ</div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font-size:24px;font-weight:800;color:#92400e" id="kcn_tt">–</span>
+          <span style="font-size:10px;color:#888">thực tế</span>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="kcn_kh">KH: –</div>
+        <div id="kcn_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="row2">
     <div class="cc">
       <div class="ch">
@@ -1612,6 +1647,49 @@ function renderKPI(){
   if(_tslnKH!=null){const r=mg*100/_tslnKH;_badge('k3b','KH: '+_tslnKH.toFixed(1)+'%',r>=1?'kb-g':r>=.8?'kb-y':'kb-r');}else _hideBadge('k3b');
   // SL, GG, CH — hide badges (no KH for these)
   _hideBadge('k1b');_hideBadge('k4b');_hideBadge('k5b');
+
+  // --- KPI TT/KH panel ---
+  const ovComp=document.getElementById('ovKPIComp');
+  if(!ovComp)return;
+  if(!_selM){ovComp.style.display='none';return;}
+  ovComp.style.display='block';
+
+  function _kpiBadge(elId,tt,kh,isVND){
+    const el=document.getElementById(elId);if(!el)return;
+    if(tt==null||kh==null||kh===0){el.innerHTML='';return;}
+    const r=tt/kh;
+    const cl=r>=1?'#2d9e5f':r>=0.8?'#d69e2e':'#e53e3e';
+    const ico=r>=1?'✅':'⚠️';
+    el.innerHTML=`${ico} <span style="color:${cl}">${(r*100).toFixed(1)}% vs KH</span>`;
+  }
+
+  // 1. Tỷ lệ DT BH / DT HT
+  const tlTT=_kpiCache['tl_tt_'+_selM]??null;
+  const tlKH=_kpiCache['tl_kh_'+_selM]??null;
+  const ktlTT=document.getElementById('ktl_tt');
+  const ktlKH=document.getElementById('ktl_kh');
+  if(ktlTT)ktlTT.textContent=tlTT!=null?tlTT.toFixed(2)+'%':'–';
+  if(ktlKH)ktlKH.textContent='KH: '+(tlKH!=null?tlKH.toFixed(2)+'%':'–');
+  _kpiBadge('ktl_badge',tlTT,tlKH,false);
+
+  // 2. TSLN
+  const tslnTT=mg*100; // % từ filt hiện tại
+  const tslnKH=_kpiCache['tsln_kh_'+_selM]??null;
+  const ktsln=document.getElementById('ktsln_tt');
+  const ktsln_kh=document.getElementById('ktsln_kh');
+  if(ktsln)ktsln.textContent=tslnTT.toFixed(1)+'%';
+  if(ktsln_kh)ktsln_kh.textContent='KH: '+(tslnKH!=null?tslnKH.toFixed(1)+'%':'–');
+  _kpiBadge('ktsln_badge',tslnTT,tslnKH,false);
+
+  // 3. Thu hồi CN
+  const selY=parseInt(document.getElementById('fYear')?.value||2026);
+  const cnTT=_kpiCache['cn_tt_raw_'+_selM]??_cnKPI[selY+'-'+_selM]??null;
+  const cnKH=_kpiCache['cn_kh_'+_selM]??null;
+  const kcnTT=document.getElementById('kcn_tt');
+  const kcnKH=document.getElementById('kcn_kh');
+  if(kcnTT)kcnTT.textContent=cnTT!=null?fmtB(cnTT):'–';
+  if(kcnKH)kcnKH.textContent='KH: '+(cnKH!=null?fmtB(cnKH):'–');
+  _kpiBadge('kcn_badge',cnTT,cnKH,true);
 }
 
 // ===== XU HƯỚNG =====
@@ -4231,6 +4309,10 @@ function recalcKPI(){
     _kpiCache['dt_kh_'+m]=dt_kh;  // để renderBOD đọc
     // Tỷ lệ TT = DT BH TT / DT HT TT
     var tl_tt = (ht_tt!==null&&ht_tt>0) ? dt_tt/ht_tt*100 : null;
+    // Cache để Tổng quan đọc
+    _kpiCache['tl_kh_'+m]=tl_kh;
+    _kpiCache['tl_tt_'+m]=tl_tt;
+    _kpiCache['cn_kh_'+m]=gV('cn_kh_'+m);
     // KPI: tỷ lệ TT / tỷ lệ KH
     var dt_kpi = (tl_tt!==null&&tl_kh!==null&&tl_kh>0) ? tl_tt/tl_kh : null;
 
