@@ -5356,7 +5356,9 @@ function getXuatKho(ten,m,y){
   return D_ALL.filter(r=>{
     if(r.thang!==m||r.nam!==y||!r.sanPham)return false;
     const ns=norm(r.sanPham);
-    return ns===nTen||ns.includes(nTen)||nTen.includes(ns);
+    // Chỉ: exact match HOẶC tên POS chứa tên inventory
+    // Bỏ nTen.includes(ns) để tránh "Máy ép" khớp cả "Máy ép thủ công" lẫn "Máy ép tự động"
+    return ns===nTen||ns.includes(nTen);
   }).reduce((s,r)=>s+(r.sl||0),0);
 }
 
@@ -5367,7 +5369,7 @@ function getAutoGiaVon(ten){
   const matched=D_ALL.filter(r=>{
     if(!r.sanPham)return false;
     const ns=norm(r.sanPham);
-    return ns===nTen||ns.includes(nTen)||nTen.includes(ns);
+    return ns===nTen||ns.includes(nTen);
   });
   const totalGV=matched.reduce((s,r)=>s+(r.tongGiaVon||0),0);
   const totalSL=matched.reduce((s,r)=>s+(r.sl||0),0);
