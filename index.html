@@ -5342,6 +5342,11 @@ function getXuatKho(ten,m,y){
   const comp=INV_COMPOSITE[ten];
   if(comp){
     const startDate=comp.startDate?new Date(comp.startDate):null;
+    // Tháng được hỏi trước startDate → sản phẩm chưa tồn tại, xuất kho = 0
+    if(startDate){
+      const sY=startDate.getFullYear(),sM=startDate.getMonth()+1;
+      if(y<sY||(y===sY&&m<sM)) return 0;
+    }
     return D_ALL.filter(r=>{
       if(r.thang!==m||r.nam!==y||!r.sanPham)return false;
       // Lọc từ ngày bắt đầu nếu trong cùng tháng/năm của startDate
