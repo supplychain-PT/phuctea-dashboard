@@ -1077,6 +1077,7 @@ tr:last-child td{border-bottom:none}
       </select>
     </div>
     <button class="btn" style="padding:6px 14px;font-size:12px" onclick="invCopyPrevMonth()">📋 Sao chép tháng trước</button>
+    <button class="btn" style="padding:6px 14px;font-size:12px;background:#e53e3e" onclick="invResetTonDau()" title="Xóa tất cả tồn đầu kỳ đã lưu tay, trả về tự động">🔄 Xóa đầu kỳ</button>
     <button class="btn" style="padding:6px 14px;font-size:12px;background:#2b6cb0" onclick="exportInvExcel()">⬇️ Excel</button>
     <button class="btn" style="padding:6px 14px;font-size:12px;background:#38a169" onclick="invSaveMonth()">💾 Lưu tháng</button>
     <button class="btn" style="padding:6px 14px;font-size:12px;background:#805ad5" onclick="invAddProduct()">➕ Thêm SP</button>
@@ -5584,6 +5585,24 @@ function invCopyPrevMonth(){
   localStorage.setItem(INV_KEY,JSON.stringify(all));
   renderInvTable();
   alert('✅ Đã sao chép tồn cuối tháng trước làm tồn đầu kỳ!');
+}
+
+// Xóa tất cả tồn đầu kỳ đã lưu tay cho tháng hiện tại → trả về tự động từ tháng trước
+function invResetTonDau(){
+  const m=parseInt(document.getElementById('invMonth')?.value||1);
+  const y=parseInt(document.getElementById('invYear')?.value||2026);
+  if(!confirm(`Xóa tất cả tồn đầu kỳ đã lưu của T${m}/${y}?\nDữ liệu sẽ tự động tính lại từ cuối kỳ T${m===1?12:m-1}/${m===1?y-1:y}.`))return;
+  const all=loadInvData();
+  const k=invKey(m,y);
+  if(all[k]){
+    Object.keys(all[k]).forEach(ten=>{
+      if(all[k][ten]&&'tonDau' in all[k][ten]) delete all[k][ten].tonDau;
+      // Xóa object rỗng
+      if(all[k][ten]&&!Object.keys(all[k][ten]).length) delete all[k][ten];
+    });
+  }
+  localStorage.setItem(INV_KEY,JSON.stringify(all));
+  renderInvTable();
 }
 
 function exportInvExcel(){
