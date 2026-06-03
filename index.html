@@ -5303,23 +5303,25 @@ function getEffectiveProducts(){
   ];
 }
 
-// Tồn đầu: ưu tiên nhập tay; nếu chưa có thì tự động lấy tồn cuối tháng trước
-// Hỗ trợ chuỗi nhiều tháng liên tiếp auto (đệ quy, giới hạn 24 cấp)
+// Tồn đầu: ưu tiên nhập tay; nếu chưa có thì tự động lấy tồn cuối tháng trước.
+// Đệ quy xuyên suốt chuỗi nhiều tháng (kể cả tháng không có bản ghi nào trong storage).
 function getAutoTonDau(all,m,y,ten,_depth){
   if((_depth||0)>24) return {val:null,auto:false};
+  // 1. Ưu tiên giá trị lưu tay
   const saved=getInvCell(all,m,y,ten,'tonDau');
   if(saved!==null) return {val:saved,auto:false};
+  // 2. Tính từ tồn cuối tháng trước: tonCuoi(prev) = tonDau(prev) + nhap(prev) − xuat(prev)
   let pm=m-1,py=y;
   if(pm<=0){pm=12;py--;}
-  const prevKey=invKey(pm,py);
-  if(!all[prevKey]||!all[prevKey][ten]) return {val:null,auto:false};
-  // Đệ quy để lấy đúng tonDau tháng trước (dù tháng trước cũng đang auto)
-  const prevTonDauObj=getAutoTonDau(all,pm,py,ten,(_depth||0)+1);
-  const prevTonDau=prevTonDauObj.val??0;
-  const prevNhap=all[prevKey][ten].nhap??0;
-  const prevXuatOv=all[prevKey][ten].xuat??null;
+  const prevTonDauObj=getAutoTonDau(all,pm,py,ten,(_depth||0)+1); // đệ quy
+  const prevNhap=getInvCell(all,pm,py,ten,'nhap')??0;
+  const prevXuatOv=getInvCell(all,pm,py,ten,'xuat');
   const prevXuat=prevXuatOv!==null?prevXuatOv:getXuatKho(ten,pm,py);
-  const prevTonCuoi=prevTonDau+prevNhap-prevXuat;
+  // Không có bất kỳ dữ liệu nào → thực sự chưa có lịch sử
+  if(prevTonDauObj.val===null&&prevNhap===0&&prevXuatOv===null&&prevXuat===0){
+    return {val:null,auto:false};
+  }
+  const prevTonCuoi=(prevTonDauObj.val??0)+prevNhap-prevXuat;
   return {val:prevTonCuoi,auto:true};
 }
 
