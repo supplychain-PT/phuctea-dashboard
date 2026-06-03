@@ -5304,14 +5304,18 @@ function getEffectiveProducts(){
 }
 
 // Tồn đầu: ưu tiên nhập tay; nếu chưa có thì tự động lấy tồn cuối tháng trước
-function getAutoTonDau(all,m,y,ten){
+// Hỗ trợ chuỗi nhiều tháng liên tiếp auto (đệ quy, giới hạn 24 cấp)
+function getAutoTonDau(all,m,y,ten,_depth){
+  if((_depth||0)>24) return {val:null,auto:false};
   const saved=getInvCell(all,m,y,ten,'tonDau');
   if(saved!==null) return {val:saved,auto:false};
   let pm=m-1,py=y;
   if(pm<=0){pm=12;py--;}
   const prevKey=invKey(pm,py);
   if(!all[prevKey]||!all[prevKey][ten]) return {val:null,auto:false};
-  const prevTonDau=all[prevKey][ten].tonDau??0;
+  // Đệ quy để lấy đúng tonDau tháng trước (dù tháng trước cũng đang auto)
+  const prevTonDauObj=getAutoTonDau(all,pm,py,ten,(_depth||0)+1);
+  const prevTonDau=prevTonDauObj.val??0;
   const prevNhap=all[prevKey][ten].nhap??0;
   const prevXuatOv=all[prevKey][ten].xuat??null;
   const prevXuat=prevXuatOv!==null?prevXuatOv:getXuatKho(ten,pm,py);
@@ -5563,9 +5567,15 @@ function invCopyPrevMonth(){
   if(!all[curKey])all[curKey]={};
   getEffectiveProducts().forEach(p=>{
     const prev=all[prevKey]?.[p.ten];
-    if(!prev)return;
-    const prevTonDau=prev.tonDau??0,prevNhap=prev.nhap??0,prevXuat=prev.xuat??getXuatKho(p.ten,pm,py);
+    // Dùng getAutoTonDau để lấy đúng tonDau tháng trước (kể cả khi đang auto-compute)
+    const prevTonDauObj=getAutoTonDau(all,pm,py,p.ten);
+    const prevTonDau=prevTonDauObj.val??0;
+    const prevNhap=prev?.nhap??0;
+    const prevXuatOv=prev?.xuat??null;
+    const prevXuat=prevXuatOv!==null?prevXuatOv:getXuatKho(p.ten,pm,py);
     const prevTonCuoi=prevTonDau+prevNhap-prevXuat;
+    // Bỏ qua nếu không có dữ liệu gì ở tháng trước
+    if(!prev&&prevTonDau===0) return;
     if(!all[curKey][p.ten])all[curKey][p.ten]={};
     all[curKey][p.ten].tonDau=prevTonCuoi;
   });
