@@ -4058,7 +4058,11 @@ function showTab(name,el){
   if(name==='pd')renderPdPage();
   if(name==='miss')renderMissPage();
   if(name==='week'){setWeek7d();}
-  if(name==='order')renderOrderTrack();
+  if(name==='order'){
+    const _of=document.getElementById('ordFrom');
+    if(_of&&!_of.value){const _n=new Date();_of.value=`${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-01`;}
+    renderOrderTrack();
+  }
   if(name==='ov'){recalcKPI();renderAll();}
   if(name==='kpi'){loadKPI();fetchKPIFromSheet().then(()=>recalcKPI());}
   if(name==='bod'){loadKPI();renderBOD();}
