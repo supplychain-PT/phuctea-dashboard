@@ -500,6 +500,37 @@ tr:last-child td{border-bottom:none}
 <!-- CỬA HÀNG -->
 <div class="page" id="page-st">
   <p class="stitle">Hiệu quả kinh doanh theo Cửa hàng</p>
+
+  <!-- Quản lý trạng thái cửa hàng -->
+  <div class="cc" style="margin-bottom:16px">
+    <div class="ch">
+      <div>
+        <div class="ctitle">📋 Danh sách Cửa hàng</div>
+        <div class="csub">Cửa hàng đã đóng cửa sẽ bị ẩn khỏi tất cả biểu đồ, bảng và bộ lọc</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;font-weight:700;color:var(--muted)">Hiển thị:</label>
+        <select id="stCfgFilter" onchange="renderStoreCfgTable()" style="border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px">
+          <option value="all">Tất cả</option>
+          <option value="active">Đang hoạt động</option>
+          <option value="closed">Đã đóng cửa</option>
+        </select>
+      </div>
+    </div>
+    <div id="stCfgSummary" style="font-size:12px;color:#555;margin-bottom:10px"></div>
+    <div class="tbl-wrap" style="max-height:360px">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Cửa hàng</th>
+          <th style="text-align:center">Trạng thái</th>
+          <th style="text-align:center">Ngày đóng cửa</th>
+          <th style="text-align:center;width:110px"></th>
+        </tr></thead>
+        <tbody id="stCfgTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="row22" style="margin-bottom:16px">
     <div class="cc">
       <div class="ch"><div class="ctitle">Top 15 Cửa hàng – Doanh thu</div></div>
@@ -1278,11 +1309,76 @@ const CL=['#1a6b3c','#2d9e5f','#38b2ac','#3182ce','#805ad5','#d69e2e','#e53e3e',
 function dc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
 function arrow(v,b){if(!b||b===0)return'';const d=((v-b)/b)*100;if(d>0)return`<span class="up">▲ ${d.toFixed(1)}%</span>`;return`<span class="dn">▼ ${Math.abs(d).toFixed(1)}%</span>`;}
 
+// ===== QUẢN LÝ TRẠNG THÁI CỬA HÀNG =====
+const STORE_CFG_KEY='phuctea_store_cfg';
+function loadStoreCfg(){try{return JSON.parse(localStorage.getItem(STORE_CFG_KEY)||'{}')}catch{return{}}}
+function saveStoreCfg(c){localStorage.setItem(STORE_CFG_KEY,JSON.stringify(c))}
+function isStoreActive(n){const c=loadStoreCfg();return!c[n]||c[n].status!=='closed'}
+
+function renderStoreCfgTable(){
+  const allStores=[...new Set((D_ALL||[]).map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const cfg=loadStoreCfg();
+  const filter=document.getElementById('stCfgFilter')?.value||'all';
+  const totalActive=allStores.filter(s=>!cfg[s]||cfg[s].status!=='closed').length;
+  const totalClosed=allStores.length-totalActive;
+  const sumEl=document.getElementById('stCfgSummary');
+  if(sumEl)sumEl.innerHTML=`<span style="color:#2d9e5f;font-weight:700">${totalActive} đang hoạt động</span> &nbsp;·&nbsp; <span style="color:#c53030;font-weight:700">${totalClosed} đã đóng cửa</span> &nbsp;·&nbsp; ${allStores.length} tổng cộng`;
+  let tb='',idx=0;
+  allStores.forEach(s=>{
+    const sc=cfg[s]||{};
+    const isClosed=sc.status==='closed';
+    if(filter==='active'&&isClosed)return;
+    if(filter==='closed'&&!isClosed)return;
+    idx++;
+    const safe=s.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+    tb+=`<tr${isClosed?' style="background:#fff5f5"':''}>
+      <td style="color:#888">${idx}</td>
+      <td style="font-weight:600${isClosed?';color:#999;text-decoration:line-through':''}">${s}</td>
+      <td style="text-align:center">
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${isClosed?'#fff0f0':'#e8f5ee'};color:${isClosed?'#c53030':'#2d9e5f'}">
+          ${isClosed?'⛔ Đóng cửa':'✅ Hoạt động'}
+        </span>
+      </td>
+      <td style="text-align:center">
+        ${isClosed
+          ?`<input type="date" value="${sc.closedDate||''}" onchange="stSetClosedDate('${safe}',this.value)" style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:12px;color:#c53030">`
+          :'<span style="color:#a0aec0;font-size:12px">–</span>'
+        }
+      </td>
+      <td style="text-align:center">
+        <button onclick="stToggleStore(this)" data-store="${safe}" style="background:${isClosed?'#e8f5ee':'#fff0f0'};color:${isClosed?'#1a6b3c':'#c53030'};border:1px solid ${isClosed?'#b7dfc8':'#feb2b2'};border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">
+          ${isClosed?'↩ Mở lại':'✕ Đánh dấu đóng'}
+        </button>
+      </td>
+    </tr>`;
+  });
+  if(!tb)tb=`<tr><td colspan="5" style="text-align:center;color:#a0aec0;padding:20px">Không có cửa hàng nào</td></tr>`;
+  document.getElementById('stCfgTbody').innerHTML=tb;
+}
+
+function stToggleStore(btn){
+  const name=btn.dataset.store;
+  const cfg=loadStoreCfg();
+  if(cfg[name]?.status==='closed'){delete cfg[name];}
+  else{cfg[name]={status:'closed',closedDate:new Date().toISOString().slice(0,10)};}
+  saveStoreCfg(cfg);
+  renderStoreCfgTable();
+  buildFilters();
+  renderStPage();
+}
+
+function stSetClosedDate(name,date){
+  const cfg=loadStoreCfg();
+  if(!cfg[name])cfg[name]={status:'closed'};
+  cfg[name].closedDate=date;
+  saveStoreCfg(cfg);
+}
+
 // Khởi tạo dropdown – named function để gọi lại sau khi fetch data xong
 function buildFilters(){
   const curStore=document.getElementById('fStore').value;
   const curMStore=document.getElementById('mStore')?document.getElementById('mStore').value:'';
-  const stores=[...new Set(D_CY.map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const stores=[...new Set(D_CY.map(r=>r.chiNhanh).filter(Boolean))].filter(isStoreActive).sort();
   const cats=[...new Set(D_CY.map(r=>r.loaiHang).filter(Boolean))].sort();
   const catsCatalog=[...new Set(CATALOG.map(r=>r.nhomHang))].sort();
   [document.getElementById('fStore'),document.getElementById('mStore')].forEach(sel=>{
@@ -1782,7 +1878,7 @@ function renderCat(){
 function setSM(m,el){sM=m;document.querySelectorAll('#sDT,#sLN').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderStoreOv();}
 function renderStoreOv(){
   const gr={};
-  filt.forEach(r=>{if(!gr[r.chiNhanh])gr[r.chiNhanh]={dt:0,ln:0};gr[r.chiNhanh].dt+=(r.thanhTien||0);gr[r.chiNhanh].ln+=(r.lnThuc||0);});
+  filt.filter(r=>isStoreActive(r.chiNhanh)).forEach(r=>{if(!gr[r.chiNhanh])gr[r.chiNhanh]={dt:0,ln:0};gr[r.chiNhanh].dt+=(r.thanhTien||0);gr[r.chiNhanh].ln+=(r.lnThuc||0);});
   const sorted=Object.entries(gr).sort((a,b)=>b[1][sM]-a[1][sM]).slice(0,10);
   const lbs=sorted.map(x=>x[0].replace(/^(PHUCTEA|THEHOA|PHUCTEACENTER)\d+\s*-\s*/i,'').slice(0,20));
   const vals=sorted.map(x=>x[1][sM]);
@@ -2052,7 +2148,7 @@ function renderStPivot(){
   initStPivot();
   const type=document.getElementById('stPivotType')?.value||'month';
   const year=+document.getElementById('stPivotYear')?.value||2026;
-  const rows=D_ALL.filter(r=>r.nam===year);
+  const rows=D_ALL.filter(r=>r.nam===year&&isStoreActive(r.chiNhanh));
 
   // Build period keys
   let periods;
@@ -2193,8 +2289,9 @@ function renderCmpPage(){
 
 // ===== TAB CỬA HÀNG =====
 function renderStPage(){
+  renderStoreCfgTable();
   const gr={};
-  D_CY.forEach(r=>{
+  D_CY.filter(r=>isStoreActive(r.chiNhanh)).forEach(r=>{
     if(!gr[r.chiNhanh])gr[r.chiNhanh]={dt:0,dtSau:0,ln:0,lnTruoc:0,sl:0,gg:0,brand:r.chiNhanh.startsWith('THEHOA')?'THE HOA':'PHÚC TEA'};
     gr[r.chiNhanh].dt+=(r.thanhTien||0);
     gr[r.chiNhanh].dtSau+=(r.tongThanhTien||0);
@@ -2595,7 +2692,7 @@ function renderPdNoOrder(){
     months.push({m:d.getMonth()+1,y:d.getFullYear()});
   }
   const normQ=normalizeSPName(prod).toLowerCase();
-  const allStores=[...new Set((D_CY||[]).map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const allStores=[...new Set((D_CY||[]).map(r=>r.chiNhanh).filter(Boolean))].filter(isStoreActive).sort();
   const ordByMo={};
   months.forEach(({m,y})=>{
     const k=`${y}-${m}`;
