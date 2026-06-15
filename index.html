@@ -609,6 +609,28 @@ tr:last-child td{border-bottom:none}
     <div id="pdTrendEmpty" style="text-align:center;padding:36px 20px;color:#a0aec0;font-size:13px">
       🔍 Nhập tên sản phẩm và chọn khoảng thời gian để xem sản lượng
     </div>
+    <!-- Cửa hàng chưa đặt sản phẩm -->
+    <div id="pdNoOrderSection" style="display:none;margin-top:20px;border-top:1px solid #e2e8f0;padding-top:16px">
+      <div class="ch" style="margin-bottom:12px">
+        <div>
+          <div class="ctitle">🔴 Cửa hàng chưa đặt sản phẩm này</div>
+          <div class="csub" id="pdNoOrderSub">–</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;font-weight:700;color:var(--muted)">Xem trong</label>
+          <select id="pdNoOrderMonths" onchange="renderPdNoOrder()" style="border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px">
+            <option value="2">2 tháng gần nhất</option>
+            <option value="3" selected>3 tháng gần nhất</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap" style="max-height:420px">
+        <table>
+          <thead id="pdNoOrderHead"></thead>
+          <tbody id="pdNoOrderBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="row22" style="margin-bottom:16px">
@@ -2399,6 +2421,7 @@ function renderPdTrend(){
   if(!prodName){
     if(res)res.style.display='none';
     if(emp){emp.style.display='block';emp.innerHTML='🔍 Nhập tên sản phẩm và chọn khoảng thời gian để xem sản lượng';}
+    const _ns=document.getElementById('pdNoOrderSection');if(_ns)_ns.style.display='none';
     return;
   }
   const fromM=parseInt(document.getElementById('pdFromM').value)||1;
@@ -2424,6 +2447,7 @@ function renderPdTrend(){
   if(!inRange.length){
     if(res)res.style.display='none';
     if(emp){emp.style.display='block';emp.innerHTML=`😕 Không tìm thấy dữ liệu cho "<b>${prodName}</b>" trong khoảng T${fromM}/${fromY} – T${toM}/${toY}`;}
+    const _ns=document.getElementById('pdNoOrderSection');if(_ns)_ns.style.display='none';
     return;
   }
 
@@ -2555,6 +2579,57 @@ function renderPdTrend(){
     <td style="text-align:right;font-weight:800;color:#3182ce">${fmt(totalLN)}</td>
     <td style="text-align:right;font-weight:800;color:${mc(mg)}">${pct(mg)}</td>
   </tr>`;
+  renderPdNoOrder();
+}
+
+// ===== CỬA HÀNG CHƯA ĐẶT SẢN PHẨM =====
+function renderPdNoOrder(){
+  const prod=_pdSelectedProd;
+  const sec=document.getElementById('pdNoOrderSection');
+  if(!prod||!sec){if(sec)sec.style.display='none';return;}
+  const nM=parseInt(document.getElementById('pdNoOrderMonths')?.value)||3;
+  const now=new Date();
+  const months=[];
+  for(let i=nM;i>=1;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({m:d.getMonth()+1,y:d.getFullYear()});
+  }
+  const normQ=normalizeSPName(prod).toLowerCase();
+  const allStores=[...new Set((D_CY||[]).map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const ordByMo={};
+  months.forEach(({m,y})=>{
+    const k=`${y}-${m}`;
+    ordByMo[k]=new Set((D_ALL||[]).filter(r=>{
+      if(r.thang!==m||r.nam!==y||!r.sanPham||!r.chiNhanh)return false;
+      const nm=normalizeSPName(r.sanPham).toLowerCase();
+      return nm===normQ||nm.includes(normQ);
+    }).map(r=>r.chiNhanh));
+  });
+  const rows=allStores.map(s=>{
+    const sts=months.map(({m,y})=>ordByMo[`${y}-${m}`].has(s));
+    return{s,sts,miss:sts.filter(v=>!v).length};
+  }).filter(r=>r.miss>0).sort((a,b)=>b.miss-a.miss||a.s.localeCompare(b.s,'vi'));
+  document.getElementById('pdNoOrderHead').innerHTML=`<tr>
+    <th>Cửa hàng</th>
+    ${months.map(({m,y})=>`<th style="text-align:center">T${m}/${y}</th>`).join('')}
+    <th style="text-align:center">Tháng bỏ</th>
+  </tr>`;
+  let body='';
+  rows.forEach(({s,sts,miss})=>{
+    const all=miss===nM;
+    body+=`<tr${all?' style="background:#fff5f5"':''}>
+      <td style="font-weight:600${all?';color:#c53030':''}">${s}</td>
+      ${sts.map(ok=>`<td style="text-align:center;font-size:14px">${ok
+        ?'<span style="color:#2d9e5f">✓</span>'
+        :'<span style="color:#e53e3e;font-weight:700">✗</span>'
+      }</td>`).join('')}
+      <td style="text-align:center;font-weight:700;color:${miss===nM?'#c53030':'#d69e2e'}">${miss}/${nM}</td>
+    </tr>`;
+  });
+  if(!body)body=`<tr><td colspan="${nM+2}" style="text-align:center;color:#2d9e5f;padding:20px;font-weight:600">✅ Tất cả cửa hàng đều đặt sản phẩm này trong ${nM} tháng gần nhất!</td></tr>`;
+  document.getElementById('pdNoOrderBody').innerHTML=body;
+  document.getElementById('pdNoOrderSub').textContent=`${rows.length} / ${allStores.length} cửa hàng chưa đặt trong ${nM} tháng gần nhất`;
+  sec.style.display='block';
 }
 
 // ===== TAB SẢN PHẨM CHƯA NHẬP =====
