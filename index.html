@@ -4466,7 +4466,7 @@ function _readKH(field, month){
 
 // ── Global: DT BH exclusion (dùng chung cho recalcKPI và BOD) ──────────
 const DT_BH_EXCL_CAT=new Set(['VD ĐỘC QUYỀN','HỆ THỐNG']);
-const DT_BH_EXCL_SP=['Combo 50 Móc Khoá Đủ Loại','Combo 200 Túi Giữ Nhiệt 2026.03','Combo 125 Bình Con Vịt'];
+const DT_BH_EXCL_SP=['Combo 50 Móc Khoá Đủ Loại'];
 const _normSP=s=>(s||'').toLowerCase().replace(/\s+/g,' ').trim();
 const _exclSPSet=new Set(DT_BH_EXCL_SP.map(_normSP));
 function isBHExcluded(r){
