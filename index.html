@@ -1316,7 +1316,7 @@ function saveStoreCfg(c){localStorage.setItem(STORE_CFG_KEY,JSON.stringify(c))}
 function isStoreActive(n){const c=loadStoreCfg();return!c[n]||c[n].status!=='closed'}
 
 function renderStoreCfgTable(){
-  const allStores=[...new Set((D_ALL||[]).map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const allStores=[...new Set((D_ALL||[]).map(r=>r.chiNhanh).filter(Boolean))].sort().sort((a,b)=>{const ca=loadStoreCfg();const ac=!ca[a]||ca[a].status!=='closed',bc=!ca[b]||ca[b].status!=='closed';return ac===bc?0:ac?-1:1;});
   const cfg=loadStoreCfg();
   const filter=document.getElementById('stCfgFilter')?.value||'all';
   const totalActive=allStores.filter(s=>!cfg[s]||cfg[s].status!=='closed').length;
