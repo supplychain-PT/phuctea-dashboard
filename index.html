@@ -346,6 +346,28 @@ tr:last-child td{border-bottom:none}
     <div id="dailyTableWrap" style="display:none;max-height:420px;overflow-y:auto"><div id="dailyTable"></div></div>
   </div>
 
+  <!-- Xuất báo cáo theo ngày -->
+  <div class="cc" style="margin-top:14px">
+    <div class="ch">
+      <div>
+        <div class="ctitle">📊 Xuất Báo Cáo Theo Ngày</div>
+        <div class="csub">DT &amp; LN tổng hợp · DT từng cửa hàng theo ngày → file Excel 2 sheet</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:12px 0 14px">
+      <div class="fg">
+        <label style="font-size:10px;font-weight:700;color:var(--muted)">Từ ngày</label>
+        <input type="date" id="rpFrom" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px;margin-top:3px;display:block" oninput="rpUpdatePreview()">
+      </div>
+      <div class="fg">
+        <label style="font-size:10px;font-weight:700;color:var(--muted)">Đến ngày</label>
+        <input type="date" id="rpTo" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px;margin-top:3px;display:block" oninput="rpUpdatePreview()">
+      </div>
+      <button onclick="exportDailyReport()" style="background:#1a6b3c;color:#fff;border:none;border-radius:8px;padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer">⬇️ Xuất Excel</button>
+    </div>
+    <div id="rpPreview" style="font-size:12px;color:#718096"></div>
+  </div>
+
   <!-- Doanh thu theo tuần -->
   <div class="row22" style="margin-top:14px">
     <div class="cc">
@@ -1930,6 +1952,102 @@ function renderOvAlerts(){
   const dtKH=selM&&_kpiCache['dt_bh_kh_'+selM]?_kpiCache['dt_bh_kh_'+selM]:null;
   if(!dtKH)h+=chip('⚠️ Chưa có KH tháng này','#fff8e6','#7a5800');
   el.innerHTML=h;
+}
+
+// ===== XUẤT BÁO CÁO THEO NGÀY =====
+function rpInitDates(){
+  const n=new Date();
+  const y=n.getFullYear(),m=String(n.getMonth()+1).padStart(2,'0');
+  const from=document.getElementById('rpFrom');
+  const to=document.getElementById('rpTo');
+  if(from&&!from.value) from.value=`${y}-${m}-01`;
+  if(to&&!to.value){const last=new Date(y,n.getMonth()+1,0);to.value=`${y}-${m}-${String(last.getDate()).padStart(2,'0')}`;}
+  rpUpdatePreview();
+}
+function rpUpdatePreview(){
+  const from=document.getElementById('rpFrom')?.value||'';
+  const to=document.getElementById('rpTo')?.value||'';
+  const rows=(D_ALL||[]).filter(r=>{
+    if(!r.ngay)return false;
+    const d=r.ngay.slice(0,10);
+    if(from&&d<from)return false;
+    if(to&&d>to)return false;
+    return isStoreActive(r.chiNhanh);
+  });
+  const days=new Set(rows.map(r=>r.ngay.slice(0,10)));
+  const stores=new Set(rows.map(r=>r.chiNhanh).filter(Boolean));
+  const el=document.getElementById('rpPreview');
+  if(el)el.innerHTML=rows.length
+    ?`<span style="color:#2d9e5f;font-weight:700">${days.size} ngày</span> · <span style="color:#3182ce;font-weight:700">${stores.size} cửa hàng</span> · <span style="color:#718096">${rows.length.toLocaleString('vi-VN')} dòng dữ liệu</span>`
+    :'<span style="color:#e53e3e">Không có dữ liệu trong khoảng này</span>';
+}
+function exportDailyReport(){
+  const from=document.getElementById('rpFrom')?.value||'';
+  const to=document.getElementById('rpTo')?.value||'';
+  const rows=(D_ALL||[]).filter(r=>{
+    if(!r.ngay)return false;
+    const d=r.ngay.slice(0,10);
+    if(from&&d<from)return false;
+    if(to&&d>to)return false;
+    return isStoreActive(r.chiNhanh);
+  });
+  if(!rows.length){alert('Không có dữ liệu trong khoảng thời gian này.');return;}
+
+  // Sheet 1: DT & LN theo ngày
+  const byDay={};
+  rows.forEach(r=>{
+    const d=r.ngay.slice(0,10);
+    if(!byDay[d])byDay[d]={dt:0,lnTruoc:0,ln:0,sl:0};
+    byDay[d].dt+=(r.thanhTien||0);
+    byDay[d].lnTruoc+=(r.lnTruocGG||0);
+    byDay[d].ln+=(r.lnThuc||0);
+    byDay[d].sl+=(r.sl||0);
+  });
+  const days=Object.keys(byDay).sort();
+  const s1=[['Ngày','Doanh thu (trước GG)','LN trước GG','Biên trước GG (%)','LN sau GG','Biên sau GG (%)','Số lượng']];
+  days.forEach(d=>{
+    const v=byDay[d];
+    s1.push([d,v.dt,v.lnTruoc,v.dt>0?+(v.lnTruoc/v.dt*100).toFixed(2):0,v.ln,v.dt>0?+(v.ln/v.dt*100).toFixed(2):0,v.sl]);
+  });
+  // Dòng tổng
+  const tDT=days.reduce((s,d)=>s+byDay[d].dt,0);
+  const tLNT=days.reduce((s,d)=>s+byDay[d].lnTruoc,0);
+  const tLN=days.reduce((s,d)=>s+byDay[d].ln,0);
+  const tSL=days.reduce((s,d)=>s+byDay[d].sl,0);
+  s1.push(['TỔNG',tDT,tLNT,tDT>0?+(tLNT/tDT*100).toFixed(2):0,tLN,tDT>0?+(tLN/tDT*100).toFixed(2):0,tSL]);
+
+  // Sheet 2: DT từng cửa hàng theo ngày
+  const stores=[...new Set(rows.map(r=>r.chiNhanh).filter(Boolean))].sort();
+  const byDaySt={};
+  rows.forEach(r=>{
+    const d=r.ngay.slice(0,10);
+    if(!byDaySt[d])byDaySt[d]={};
+    byDaySt[d][r.chiNhanh]=(byDaySt[d][r.chiNhanh]||0)+(r.thanhTien||0);
+  });
+  const s2=[['Ngày',...stores,'Tổng']];
+  days.forEach(d=>{
+    const row=byDaySt[d]||{};
+    const total=stores.reduce((s,st)=>s+(row[st]||0),0);
+    s2.push([d,...stores.map(st=>row[st]||0),total]);
+  });
+  // Dòng tổng
+  s2.push(['TỔNG',...stores.map(st=>days.reduce((s,d)=>s+(byDaySt[d]?.[st]||0),0)),tDT]);
+
+  // Tạo workbook
+  const wb=XLSX.utils.book_new();
+  const ws1=XLSX.utils.aoa_to_sheet(s1);
+  const ws2=XLSX.utils.aoa_to_sheet(s2);
+  // Style cột số (định dạng VNĐ và %)
+  const fmtVND='#,##0';
+  const fmtPct='0.00"%"';
+  const setFmt=(ws,rows,cols,fmt)=>{rows.forEach(ri=>cols.forEach(ci=>{const cell=ws[XLSX.utils.encode_cell({r:ri,c:ci})];if(cell)cell.z=fmt;}));};
+  setFmt(ws1,Array.from({length:s1.length},(_,i)=>i),[1,2,4,6],fmtVND);
+  setFmt(ws1,Array.from({length:s1.length},(_,i)=>i),[3,5],fmtPct);
+  setFmt(ws2,Array.from({length:s2.length},(_,i)=>i),Array.from({length:stores.length+1},(_,i)=>i+1),fmtVND);
+  XLSX.utils.book_append_sheet(wb,ws1,'DT & LN theo ngày');
+  XLSX.utils.book_append_sheet(wb,ws2,'DT theo cửa hàng');
+  const fname=`BaoCao_Ngay_${(from||'').replace(/-/g,'')}${to?'_'+to.replace(/-/g,''):''}.xlsx`;
+  XLSX.writeFile(wb,fname);
 }
 
 // ===== DOANH THU THEO NGÀY =====
@@ -4235,7 +4353,7 @@ function showTab(name,el){
     if(_of&&!_of.value){const _n=new Date();_of.value=`${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-01`;}
     renderOrderTrack();
   }
-  if(name==='ov'){recalcKPI();renderAll();}
+  if(name==='ov'){recalcKPI();renderAll();rpInitDates();}
   if(name==='kpi'){loadKPI();fetchKPIFromSheet().then(()=>recalcKPI());}
   if(name==='bod'){loadKPI();renderBOD();}
   if(name==='noxau'){
