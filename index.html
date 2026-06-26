@@ -1396,6 +1396,25 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <!-- Results table -->
+  <!-- Tra cứu công thức theo món -->
+  <div class="cc" style="margin-bottom:14px">
+    <div class="ch" style="padding:12px 16px">
+      <div><div class="ctitle">🔬 Xem công thức theo món</div><div class="csub">Kiểm tra NVL & số lượng công thức đang dùng</div></div>
+    </div>
+    <div style="padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input id="nvlRecipeSearch" type="text" placeholder="Nhập mã món hoặc tên món (VD: TVHCM, Trà Vải...)"
+        style="border:1px solid #b7dfc8;border-radius:6px;padding:6px 12px;font-size:12px;outline:none;width:320px"
+        oninput="nvlShowRecipe()">
+      <span style="font-size:11px;color:#888">→ Xem công thức đang đọc từ sheet NVL CHO TỪNG MÓN</span>
+    </div>
+    <div id="nvlRecipeDetail" style="padding:0 16px 14px;display:none">
+      <div id="nvlRecipeInfo" style="font-size:12px;color:#555;margin-bottom:8px"></div>
+      <div class="tbl-wrap" style="max-height:300px">
+        <table style="font-size:12px"><thead id="nvlRecipeHead"></thead><tbody id="nvlRecipeBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
   <div id="nvlTableWrap" class="cc" style="display:none;padding:0">
     <div class="ch" style="padding:12px 16px">
       <div><div class="ctitle" id="nvlTableTitle">Kết quả so sánh NVL</div></div>
@@ -6388,6 +6407,43 @@ function nvlSetStatus(msg,type){
   const el=document.getElementById('nvlStatus');if(!el) return;
   el.innerHTML=msg;
   el.style.color=type==='error'?'#c53030':type==='ok'?'#1a6b3c':'#2b6cb0';
+}
+
+function nvlShowRecipe(){
+  const q=(document.getElementById('nvlRecipeSearch').value||'').trim();
+  const detail=document.getElementById('nvlRecipeDetail');
+  const info=document.getElementById('nvlRecipeInfo');
+  const thead=document.getElementById('nvlRecipeHead');
+  const tbody=document.getElementById('nvlRecipeBody');
+  if(!q){detail.style.display='none';return;}
+  const normTen=s=>(s||'').toLowerCase().replace(/[()\-_\.]/g,' ').replace(/\s+/g,' ').trim();
+  const qn=normTen(q);
+  const qu=q.toUpperCase();
+  // Build reverse lookup: stt → maMon/tenMon
+  let foundStt=null, foundName='';
+  Object.entries(_sttMonMap).forEach(([stt,{maMon,tenMon}])=>{
+    if(!foundStt){
+      if((maMon||'').toUpperCase()===qu||(maMon||'').toUpperCase().includes(qu)||
+         normTen(tenMon)===qn||normTen(tenMon).includes(qn))
+      {foundStt=parseInt(stt);foundName=tenMon||maMon;}
+    }
+  });
+  if(!foundStt||!_nvlRecipeMap[foundStt]){
+    info.innerHTML=`<span style="color:#c0392b">Không tìm thấy mã/tên món "${q}" trong STT MÓN hoặc chưa tải công thức.</span>`;
+    thead.innerHTML='';tbody.innerHTML='';detail.style.display='block';return;
+  }
+  const items=_nvlRecipeMap[foundStt]||[];
+  info.innerHTML=`<strong>STT ${foundStt} — ${foundName}</strong> · ${items.length} NVL trong công thức`;
+  thead.innerHTML='<tr><th>STT</th><th>Mã NVL</th><th>Tên NVL</th><th>Qty Size M</th><th>Qty 1L/Xô</th><th>ĐVT</th></tr>';
+  tbody.innerHTML=items.map((it,i)=>`<tr>
+    <td style="text-align:center">${i+1}</td>
+    <td>${it.maNVL||''}</td>
+    <td>${it.tenNVL||''}</td>
+    <td style="text-align:right;color:${it.qtyM>0?'#1a7a3c':'#aaa'}">${it.qtyM||0}</td>
+    <td style="text-align:right;color:${it.qty1L>0?'#1a7a3c':'#aaa'}">${it.qty1L||0}</td>
+    <td>${it.dvt||''}</td>
+  </tr>`).join('');
+  detail.style.display='block';
 }
 
 async function nvlReload(){
