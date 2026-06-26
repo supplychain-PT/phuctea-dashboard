@@ -1372,10 +1372,9 @@ tr:last-child td{border-bottom:none}
 
     <!-- Format hint -->
     <div style="font-size:11px;color:#555;background:#fffbeb;padding:8px 12px;border-radius:6px;border:1px solid #fbd38d;margin-bottom:12px">
-      <b>Định dạng file Excel (wide format):</b><br>
-      Hàng 1: <code>Mã Món | Tên Món | Tên CH 1 | Tên CH 2 | ...</code><br>
-      Hàng 2+: mã món, tên món, số lượng từng cửa hàng đã bán trong tháng.<br>
-      <span style="color:#888">VD: TSPM | Trà Sữa Phúc (Size M) | 150 | 200 | ...</span>
+      <b>Định dạng file Excel:</b> Mỗi sheet = 1 cửa hàng (tên sheet = tên cửa hàng)<br>
+      Trong mỗi sheet: <code>Mã Món | Tên Món | Số Lượng</code><br>
+      <span style="color:#888">VD sheet "PHUCTEA001": TSPM | Trà Sữa Phúc (Size M) | 150</span>
     </div>
 
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
@@ -6346,25 +6345,38 @@ function nvlHandleFile(input){
   reader.onload=(e)=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       _nvlSalesRaw=[];
-      if(!data||data.length<2){nvlSetStatus('File trống hoặc không đúng định dạng','error');return;}
-      const headers=data[0]||[];
-      const stores=headers.slice(2).map(h=>(h||'').toString().trim()).filter(Boolean);
-      for(let i=1;i<data.length;i++){
-        const row=data[i];if(!row) continue;
-        const maMon=(row[0]||'').toString().trim();
-        const tenMon=(row[1]||'').toString().trim();
-        if(!maMon&&!tenMon) continue;
-        stores.forEach((ch,j)=>{
-          const sl=parseFloat(row[j+2])||0;
+      let sheetCount=0;
+      wb.SheetNames.forEach(sheetName=>{
+        const ch=sheetName.trim();
+        if(!ch) return;
+        const ws=wb.Sheets[sheetName];
+        const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(!data||data.length<2) return;
+        sheetCount++;
+        // Each sheet: col0=Mã Món, col1=Tên Món, col2=Số Lượng (or col1 only if no separate name col)
+        // Auto-detect: if header row has 'mã' or 'sl' keywords, use those positions
+        const h0=(data[0][0]||'').toString().toLowerCase();
+        const h1=(data[0][1]||'').toString().toLowerCase();
+        const h2=(data[0][2]||'').toString().toLowerCase();
+        // Check if row 0 is a header or data
+        const isHeader=isNaN(parseFloat(data[0][0]))&&(h0.includes('mã')||h0.includes('ma')||h0.includes('stt')||h0.includes('tên')||h0.includes('ten'));
+        const startRow=isHeader?1:0;
+        // Detect columns: maMon=first col, tenMon=second col (if not numeric), sl=last meaningful col
+        for(let i=startRow;i<data.length;i++){
+          const row=data[i];if(!row) continue;
+          const maMon=(row[0]||'').toString().trim();
+          const tenMon=(row[1]||'').toString().trim();
+          if(!maMon) continue;
+          // sl: could be col2 or col1 if only 2 cols
+          const slRaw=row.length>=3?row[2]:row[1];
+          const sl=parseFloat(slRaw)||0;
           if(sl>0) _nvlSalesRaw.push({maMon,tenMon,chiNhanh:ch,sl});
-        });
-      }
+        }
+      });
       const fileLabel=document.getElementById('nvlFileName');
-      if(fileLabel) fileLabel.textContent=`✅ ${file.name} (${_nvlSalesRaw.length} dòng dữ liệu)`;
-      nvlSetStatus(`Đã tải ${_nvlSalesRaw.length} dòng từ ${file.name}. Nhấn "Tính toán" để so sánh.`,'ok');
+      if(fileLabel) fileLabel.textContent=`✅ ${file.name} · ${sheetCount} cửa hàng · ${_nvlSalesRaw.length} dòng`;
+      nvlSetStatus(`Đã tải ${sheetCount} sheet (${sheetCount} cửa hàng), ${_nvlSalesRaw.length} dòng dữ liệu. Nhấn "Tính toán".`,'ok');
     }catch(err){nvlSetStatus('Lỗi đọc file: '+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
