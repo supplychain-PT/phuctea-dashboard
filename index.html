@@ -6338,7 +6338,7 @@ async function fetchNVLRecipe(){
     const rows=parseSalesCSV(text);
     const normK=s=>(s||'').toLowerCase().replace(/[()\-_\.]/g,' ').replace(/\s+/g,' ').trim();
     _nvlRecipeMap={};
-    _nvlRawDebugRows=rows.slice(0,8).map(r=>(r||[]).slice(0,4).join(' | '));
+    _nvlRawDebugRows=[`rows.length=${rows.length}`,...rows.slice(0,8).map(r=>(r||[]).slice(0,4).join(' | '))];
     let headerBuf=null;
     let currentKey=null;
     for(let i=0;i<rows.length;i++){
