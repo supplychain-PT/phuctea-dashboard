@@ -6326,6 +6326,7 @@ async function fetchSTTMon(){
   }catch(e){console.warn('fetchSTTMon:',e.message);}
 }
 
+let _nvlRawDebugRows=[];
 async function fetchNVLRecipe(){
   const sheetEnc=encodeURIComponent('NVL CHO TỪNG MÓN');
   const url=`https://docs.google.com/spreadsheets/d/${SALES_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetEnc}&_t=${Date.now()}`;
@@ -6337,25 +6338,37 @@ async function fetchNVLRecipe(){
     const rows=parseSalesCSV(text);
     const normK=s=>(s||'').toLowerCase().replace(/[()\-_\.]/g,' ').replace(/\s+/g,' ').trim();
     _nvlRecipeMap={};
+    _nvlRawDebugRows=rows.slice(0,8).map(r=>(r||[]).slice(0,4).join(' | '));
+    let headerBuf=null;
     let currentKey=null;
-    for(let i=1;i<rows.length;i++){
+    for(let i=0;i<rows.length;i++){
       const r=rows[i];if(!r||r.every(c=>!c)) continue;
       const col0=(r[0]||'').trim();
       const col1=(r[1]||'').trim();
       const sttNvl=parseInt(col0);
       if(isNaN(sttNvl)){
-        // Skip column header repeats and category separators
-        if(!col0||col0==='STT'||col0.startsWith('—')||col0.startsWith('-')) continue;
-        // Drink section header: col0 is code (short, no spaces, no Vietnamese) or name
-        const hasViet=/[À-ỹ]/.test(col0)||/\s/.test(col0);
-        const col0IsCode=!hasViet&&col0.length<=20;
-        const drinkName=col0IsCode?(col1||col0):col0;
-        const drinkCode=col0IsCode?col0.toUpperCase():'';
-        currentKey=normK(drinkName);
-        if(!currentKey) continue;
-        if(!_nvlRecipeMap[currentKey]) _nvlRecipeMap[currentKey]=[];
-        if(drinkCode) _nvlRecipeMap['CODE:'+drinkCode]=_nvlRecipeMap[currentKey];
+        const isSkip=col0==='STT'||col0==='Mã NVL'||col0==='Mã Món'
+                    ||col0.startsWith('—')||col0.startsWith('-')||col0.startsWith('*');
+        if(!isSkip&&(col0||col1)) headerBuf=r;
         continue;
+      }
+      if(sttNvl===1&&headerBuf){
+        const h0=(headerBuf[0]||'').trim();
+        const h1=(headerBuf[1]||'').trim();
+        const h2=(headerBuf[2]||'').trim();
+        let drinkName='',drinkCode='';
+        if(!h0){
+          drinkCode=h1;drinkName=h2||h1;
+        } else {
+          const hasViet=/[À-ỹ\s]/.test(h0);
+          if(!hasViet&&h0.length<=20){drinkCode=h0;drinkName=h1||h0;}
+          else{drinkName=h0;if(h1&&!/[À-ỹ\s]/.test(h1)&&h1.length<=15)drinkCode=h1;}
+        }
+        currentKey=normK(drinkName)||normK(drinkCode);
+        if(currentKey&&!_nvlRecipeMap[currentKey]) _nvlRecipeMap[currentKey]=[];
+        if(drinkCode&&drinkCode.toUpperCase()!==currentKey.toUpperCase())
+          _nvlRecipeMap['CODE:'+drinkCode.toUpperCase()]=_nvlRecipeMap[currentKey];
+        headerBuf=null;
       }
       if(sttNvl<1||!currentKey) continue;
       const maNVL=col1;
@@ -6560,7 +6573,8 @@ function nvlCalc(){
     🏪 Sheet trong Excel: <b>${sheetNames.join(', ')||'(trống)'}</b><br>
     📝 Mẫu dòng Excel: <b>${sampleSale?`maMon="${sampleSale.maMon}" tenMon="${sampleSale.tenMon}" sl=${sampleSale.sl} ch="${sampleSale.chiNhanh}"` :'(không có)'}</b><br>
     📝 Mẫu STT MÓN: <b>${sampleSttMon||'(trống)'}</b><br>
-    📝 Key công thức mẫu: <b>"${sampleRecipeKey}"</b> → <b>${sampleRecipe||'(trống)'}</b>`;}
+    📝 Key công thức mẫu: <b>"${sampleRecipeKey}"</b> → <b>${sampleRecipe||'(trống)'}</b><br>
+    📄 8 dòng đầu sheet NVL: <code style="font-size:10px;white-space:pre-wrap">${(_nvlRawDebugRows||[]).map((r,i)=>`[${i}] ${r}`).join('\n')}</code>`;}
 
   const usageMap={};
   const unmapped=[];
