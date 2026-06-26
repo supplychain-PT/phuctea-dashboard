@@ -6467,12 +6467,14 @@ function nvlCalc(){
     &&nhomNVL.includes(r.loaiHang)
     &&(store?r.chiNhanh===store:isStoreActive(r.chiNhanh))
     &&r.maHang);
+  // Build catalog lookup: baseCode → tenHang
+  const catalogMap={};
+  (CATALOG||[]).forEach(c=>{if(c.maHang) catalogMap[baseCode(c.maHang)]=c.tenHang||c.maHang;});
+
   const actualMap={};
-  const actualNameMap={};
   actualRows.forEach(r=>{
     const k=baseCode(r.maHang);
     actualMap[k]=(actualMap[k]||0)+(r.sl||0);
-    if(!actualNameMap[k]) actualNameMap[k]=r.tenHang||r.maHang;
   });
 
   // Merge all NVL keys
@@ -6483,7 +6485,7 @@ function nvlCalc(){
     const canDung=u?u.canDung:0;
     const daNhap=actualMap[k]||0;
     const chenh=daNhap-canDung;
-    const tenNVL=u?u.tenNVL:(actualNameMap[k]||k);
+    const tenNVL=(u&&u.tenNVL)||(catalogMap[k])||k;
     const dvt=u?u.dvt:'';
     const maNVL=u?u.maNVL:k;
     tableRows.push({maNVL,tenNVL,dvt,canDung,daNhap,chenh});
