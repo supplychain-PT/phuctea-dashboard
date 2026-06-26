@@ -1323,13 +1323,24 @@ tr:last-child td{border-bottom:none}
   <div style="background:#f0f7f2;border:1px solid #b7dfc8;border-radius:12px;padding:14px 18px;margin-bottom:14px">
     <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
       <div class="fg">
-        <label>📅 Tháng phân tích</label>
-        <select id="nvlMonth" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff" onchange="">
+        <label>📅 Từ tháng</label>
+        <select id="nvlMonthFrom" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
           <option value="1">T1</option><option value="2">T2</option><option value="3">T3</option><option value="4">T4</option>
           <option value="5">T5</option><option value="6">T6</option><option value="7">T7</option><option value="8">T8</option>
           <option value="9">T9</option><option value="10">T10</option><option value="11">T11</option><option value="12">T12</option>
         </select>
-        <select id="nvlYear" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
+        <select id="nvlYearFrom" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
+          <option value="2026">2026</option><option value="2025">2025</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>📅 Đến tháng</label>
+        <select id="nvlMonthTo" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
+          <option value="1">T1</option><option value="2">T2</option><option value="3">T3</option><option value="4">T4</option>
+          <option value="5">T5</option><option value="6">T6</option><option value="7">T7</option><option value="8">T8</option>
+          <option value="9">T9</option><option value="10">T10</option><option value="11">T11</option><option value="12">T12</option>
+        </select>
+        <select id="nvlYearTo" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
           <option value="2026">2026</option><option value="2025">2025</option>
         </select>
       </div>
@@ -6367,10 +6378,14 @@ function nvlSetStatus(msg,type){
 
 async function initNVLTab(){
   const now=new Date();
-  const mSel=document.getElementById('nvlMonth');
-  const ySel=document.getElementById('nvlYear');
-  if(mSel&&!mSel.dataset.init){mSel.value=String(now.getMonth()+1);mSel.dataset.init='1';}
-  if(ySel&&!ySel.dataset.init){ySel.value=String(now.getFullYear());ySel.dataset.init='1';}
+  const mFrom=document.getElementById('nvlMonthFrom');
+  const yFrom=document.getElementById('nvlYearFrom');
+  const mTo=document.getElementById('nvlMonthTo');
+  const yTo=document.getElementById('nvlYearTo');
+  if(mFrom&&!mFrom.dataset.init){mFrom.value=String(now.getMonth()+1);mFrom.dataset.init='1';}
+  if(yFrom&&!yFrom.dataset.init){yFrom.value=String(now.getFullYear());yFrom.dataset.init='1';}
+  if(mTo&&!mTo.dataset.init){mTo.value=String(now.getMonth()+1);mTo.dataset.init='1';}
+  if(yTo&&!yTo.dataset.init){yTo.value=String(now.getFullYear());yTo.dataset.init='1';}
   const storeSel=document.getElementById('nvlStore');
   if(storeSel&&!storeSel.dataset.init){
     storeSel.innerHTML='<option value="">Tất cả cửa hàng</option>';
@@ -6392,11 +6407,16 @@ async function initNVLTab(){
 }
 
 function nvlCalc(){
-  const month=parseInt(document.getElementById('nvlMonth')?.value||0);
-  const year=parseInt(document.getElementById('nvlYear')?.value||0);
+  const mFrom=parseInt(document.getElementById('nvlMonthFrom')?.value||0);
+  const yFrom=parseInt(document.getElementById('nvlYearFrom')?.value||0);
+  const mTo=parseInt(document.getElementById('nvlMonthTo')?.value||0);
+  const yTo=parseInt(document.getElementById('nvlYearTo')?.value||0);
   const store=(document.getElementById('nvlStore')?.value||'').trim();
   const view=document.getElementById('nvlView')?.value||'all';
-  if(!month||!year){nvlSetStatus('Chọn tháng/năm trước.','error');return;}
+  if(!mFrom||!yFrom||!mTo||!yTo){nvlSetStatus('Chọn khoảng tháng/năm trước.','error');return;}
+  const tsFrom=yFrom*12+mFrom, tsTo=yTo*12+mTo;
+  if(tsFrom>tsTo){nvlSetStatus('"Từ tháng" phải nhỏ hơn hoặc bằng "Đến tháng".','error');return;}
+  const inRange=r=>{ const ts=r.nam*12+r.thang; return ts>=tsFrom&&ts<=tsTo; };
   if(!_nvlSalesRaw.length){nvlSetStatus('Chưa tải file dữ liệu số lượng món bán.','error');return;}
   if(!_nvlFetchedRecipe||!Object.keys(_nvlRecipeMap).length){nvlSetStatus('Chưa tải công thức NVL. Đợi vài giây hoặc tải lại tab...','error');return;}
   if(!_nvlFetchedSTT||!Object.keys(_sttMonMap).length){nvlSetStatus('Chưa tải danh sách STT MÓN. Đợi vài giây...','error');return;}
@@ -6431,7 +6451,7 @@ function nvlCalc(){
 
   // Actual orders from D_ALL
   const nhomNVL=['NL ĐỘC QUYỀN','VL ĐỘC QUYỀN'];
-  const actualRows=(D_ALL||[]).filter(r=>r.thang===month&&r.nam===year
+  const actualRows=(D_ALL||[]).filter(r=>inRange(r)
     &&nhomNVL.includes(r.loaiHang)
     &&(store?r.chiNhanh===store:isStoreActive(r.chiNhanh))
     &&r.maHang);
@@ -6465,13 +6485,14 @@ function nvlCalc(){
   if(view==='miss') tableRows=tableRows.filter(r=>r.canDung>0&&r.daNhap===0);
 
   _nvlLastRows=tableRows;
-  nvlRenderTable(tableRows,month,year,store);
+  const rangeLabel=mFrom===mTo&&yFrom===yTo?`T${mFrom}/${yFrom}`:`T${mFrom}/${yFrom} – T${mTo}/${yTo}`;
+  nvlRenderTable(tableRows,rangeLabel,store);
 
   const warns=unmapped.length?`<br><span style="color:#c53030;font-size:11px">⚠ ${unmapped.length} mã không có trong STT MÓN: ${unmapped.slice(0,5).join(', ')}${unmapped.length>5?'...':''}</span>`:'';
-  nvlSetStatus(`✅ ${tableRows.length} NVL · T${month}/${year}${store?' · '+store:''}${warns}`,'ok');
+  nvlSetStatus(`✅ ${tableRows.length} NVL · ${rangeLabel}${store?' · '+store:''}${warns}`,'ok');
 }
 
-function nvlRenderTable(rows,month,year,store){
+function nvlRenderTable(rows,rangeLabel,store){
   const fQ=n=>{
     if(!n||isNaN(n)||n===0) return '–';
     const v=Math.round(n*100)/100;
@@ -6512,16 +6533,19 @@ function nvlRenderTable(rows,month,year,store){
   document.getElementById('nvlTbody').innerHTML=tbody;
   const wrap=document.getElementById('nvlTableWrap');if(wrap) wrap.style.display='';
   const title=document.getElementById('nvlTableTitle');
-  if(title) title.textContent=`So sánh NVL · T${month}/${year}${store?' · '+store:''}`;
+  if(title) title.textContent=`So sánh NVL · ${rangeLabel}${store?' · '+store:''}`;
   const sub=document.getElementById('nvlTableSub');
   if(sub) sub.textContent=`${rows.length} nguyên vật liệu`;
 }
 
 function nvlExportExcel(){
   if(!_nvlLastRows.length){nvlSetStatus('Tính toán trước khi xuất Excel.','error');return;}
-  const month=parseInt(document.getElementById('nvlMonth')?.value||0);
-  const year=parseInt(document.getElementById('nvlYear')?.value||0);
+  const mFrom=parseInt(document.getElementById('nvlMonthFrom')?.value||0);
+  const yFrom=parseInt(document.getElementById('nvlYearFrom')?.value||0);
+  const mTo=parseInt(document.getElementById('nvlMonthTo')?.value||0);
+  const yTo=parseInt(document.getElementById('nvlYearTo')?.value||0);
   const store=(document.getElementById('nvlStore')?.value||'').trim();
+  const rangeLabel=mFrom===mTo&&yFrom===yTo?`T${mFrom}_${yFrom}`:`T${mFrom}_${yFrom}-T${mTo}_${yTo}`;
   const fQ=n=>(!n||isNaN(n)||n===0)?0:Math.round(n*100)/100;
   const header=['#','Mã NVL','Tên NVL','ĐVT','Cần Dùng (lý thuyết)','Đã Nhập (thực tế)','Chênh Lệch','Trạng thái'];
   const statusText=r=>{
@@ -6533,8 +6557,8 @@ function nvlExportExcel(){
   const ws=XLSX.utils.aoa_to_sheet(data);
   ws['!cols']=[{wch:4},{wch:14},{wch:35},{wch:10},{wch:16},{wch:16},{wch:14},{wch:14}];
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,`NVL T${month}-${year}`);
-  XLSX.writeFile(wb,`NVL_T${month}_${year}${store?'_'+store:''}.xlsx`);
+  XLSX.utils.book_append_sheet(wb,ws,`NVL ${rangeLabel}`.slice(0,31));
+  XLSX.writeFile(wb,`NVL_${rangeLabel}${store?'_'+store:''}.xlsx`);
 }
 
 // ===== KHỞI TẠO RENDER =====
