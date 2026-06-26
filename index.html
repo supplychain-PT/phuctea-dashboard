@@ -255,6 +255,7 @@ tr:last-child td{border-bottom:none}
   <div class="tab" onclick="showTab('noxau',this)">💸 Nợ xấu</div>
   <div class="tab" onclick="showTab('plan',this)">📊 Kế hoạch SL</div>
   <div class="tab" onclick="showTab('inv',this)">📦 Tồn Kho</div>
+  <div class="tab" onclick="showTab('nvl',this)">⚗️ Kiểm soát NVL</div>
 </div>
 
 <div class="main">
@@ -1311,6 +1312,89 @@ tr:last-child td{border-bottom:none}
     <div style="font-size:48px;margin-bottom:12px">📊</div>
     <div style="font-size:16px;font-weight:600;margin-bottom:6px">Nhập doanh thu dự kiến và nhấn "Lập kế hoạch"</div>
     <div style="font-size:12px">Hệ thống sẽ phân tích dữ liệu lịch sử để đề xuất kế hoạch sản lượng theo từng sản phẩm</div>
+  </div>
+</div>
+
+<!-- KIỂM SOÁT NVL -->
+<div class="page" id="page-nvl">
+  <p class="stitle">⚗️ Kiểm Soát Nguyên Vật Liệu</p>
+
+  <!-- Toolbar -->
+  <div style="background:#f0f7f2;border:1px solid #b7dfc8;border-radius:12px;padding:14px 18px;margin-bottom:14px">
+    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
+      <div class="fg">
+        <label>📅 Tháng phân tích</label>
+        <select id="nvlMonth" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff" onchange="">
+          <option value="1">T1</option><option value="2">T2</option><option value="3">T3</option><option value="4">T4</option>
+          <option value="5">T5</option><option value="6">T6</option><option value="7">T7</option><option value="8">T8</option>
+          <option value="9">T9</option><option value="10">T10</option><option value="11">T11</option><option value="12">T12</option>
+        </select>
+        <select id="nvlYear" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
+          <option value="2026">2026</option><option value="2025">2025</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>🏪 Cửa hàng</label>
+        <select id="nvlStore" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff;min-width:180px">
+          <option value="">Tất cả cửa hàng</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>📊 Hiển thị</label>
+        <select id="nvlView" style="border:1px solid #b7dfc8;border-radius:6px;padding:5px 9px;font-size:12px;outline:none;background:#fff">
+          <option value="all">Tất cả NVL</option>
+          <option value="warn">⚠ Lệch đáng kể</option>
+          <option value="miss">⛔ Chưa nhập</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- File upload -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#1a6b3c;display:block;margin-bottom:4px">📥 File số lượng món bán (Excel)</label>
+        <input type="file" id="nvlFileInput" accept=".xlsx,.xls" onchange="nvlHandleFile(this)"
+          style="font-size:12px;border:1px solid #b7dfc8;border-radius:6px;padding:4px 8px;background:#fff">
+      </div>
+      <div id="nvlFileName" style="font-size:12px;color:#555;align-self:flex-end;padding-bottom:2px">Chưa tải file</div>
+    </div>
+
+    <!-- Format hint -->
+    <div style="font-size:11px;color:#555;background:#fffbeb;padding:8px 12px;border-radius:6px;border:1px solid #fbd38d;margin-bottom:12px">
+      <b>Định dạng file Excel (wide format):</b><br>
+      Hàng 1: <code>Mã Món | Tên Món | Tên CH 1 | Tên CH 2 | ...</code><br>
+      Hàng 2+: mã món, tên món, số lượng từng cửa hàng đã bán trong tháng.<br>
+      <span style="color:#888">VD: TSPM | Trà Sữa Phúc (Size M) | 150 | 200 | ...</span>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button class="btn" onclick="nvlCalc()" style="padding:7px 18px;font-size:13px">🔍 Tính toán</button>
+      <button class="btn" onclick="nvlExportExcel()" style="padding:7px 18px;font-size:13px;background:#2b6cb0">⬇️ Xuất Excel</button>
+      <div id="nvlStatus" style="font-size:12px;color:#2b6cb0;font-weight:600">Đang tải dữ liệu công thức NVL từ Google Sheets...</div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:11px">
+    <span style="background:#e8f5ee;color:#1a6b3c;padding:3px 10px;border-radius:8px;font-weight:700">✅ Khớp: ±0.5</span>
+    <span style="background:#fffbeb;color:#7a5800;padding:3px 10px;border-radius:8px;font-weight:700">⬆ Nhập thừa</span>
+    <span style="background:#fff0f0;color:#c53030;padding:3px 10px;border-radius:8px;font-weight:700">⬇ Nhập thiếu</span>
+    <span style="background:#fff0f0;color:#c53030;padding:3px 10px;border-radius:8px;font-weight:700">⛔ Chưa nhập</span>
+    <span style="color:#888;align-self:center">* Cần dùng = công thức × SL bán · Đã nhập = đơn hàng NL+VL ĐỘC QUYỀN từ KiotViet</span>
+  </div>
+
+  <!-- Results table -->
+  <div id="nvlTableWrap" class="cc" style="display:none;padding:0">
+    <div class="ch" style="padding:12px 16px">
+      <div><div class="ctitle" id="nvlTableTitle">Kết quả so sánh NVL</div></div>
+      <div style="font-size:11px;color:#888" id="nvlTableSub"></div>
+    </div>
+    <div class="tbl-wrap" style="max-height:600px">
+      <table style="font-size:12px">
+        <thead id="nvlThead"></thead>
+        <tbody id="nvlTbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -4372,6 +4456,7 @@ function showTab(name,el){
     renderSavedPlanList();
   }
   if(name==='inv') initInvTab();
+  if(name==='nvl') initNVLTab();
 }
 
 var _activeCmpSub='cmp';
@@ -6171,6 +6256,285 @@ function renderSavedPlanList(){
       </div>
     </div>`;
   }).join('');
+}
+
+// ===== KIỂM SOÁT NVL =====
+let _nvlRecipeMap={};  // {drinkStt: [{maNVL,tenNVL,qtyM,qty1L,dvt}]}
+let _sttMonMap={};     // {stt: {maMon,tenMon}}
+let _nvlSalesRaw=[];   // [{maMon,tenMon,chiNhanh,sl}] from uploaded Excel
+let _nvlLastRows=[];   // last calculated rows for export
+let _nvlFetchedRecipe=false;
+let _nvlFetchedSTT=false;
+
+function nvlGetSize(tenMon){
+  const t=(tenMon||'').toLowerCase();
+  if(t.includes('xô')||t.includes('1l')||t.includes('1 l')) return '1L';
+  return 'M';
+}
+
+async function fetchSTTMon(){
+  const sheetEnc=encodeURIComponent('STT MÓN');
+  const url=`https://docs.google.com/spreadsheets/d/${SALES_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetEnc}&_t=${Date.now()}`;
+  try{
+    const resp=await fetch(url,{cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    if(!text||text.trim().startsWith('<')) throw new Error('Sheet STT MÓN chưa public hoặc không tồn tại');
+    const rows=parseSalesCSV(text);
+    _sttMonMap={};
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];if(!r) continue;
+      const stt=parseInt((r[0]||'').trim());
+      const maMon=(r[1]||'').trim();
+      const tenMon=(r[2]||'').trim();
+      if(!stt||!maMon) continue;
+      _sttMonMap[stt]={maMon,tenMon};
+    }
+    _nvlFetchedSTT=true;
+    console.info('fetchSTTMon OK:',Object.keys(_sttMonMap).length,'món');
+  }catch(e){console.warn('fetchSTTMon:',e.message);}
+}
+
+async function fetchNVLRecipe(){
+  const sheetEnc=encodeURIComponent('NVL CHO TỪNG MÓN');
+  const url=`https://docs.google.com/spreadsheets/d/${SALES_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetEnc}&_t=${Date.now()}`;
+  try{
+    const resp=await fetch(url,{cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    if(!text||text.trim().startsWith('<')) throw new Error('Sheet NVL chưa public hoặc không tồn tại');
+    const rows=parseSalesCSV(text);
+    _nvlRecipeMap={};
+    let drinkIdx=0;
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];if(!r||r.every(c=>!c)) continue;
+      const col0=(r[0]||'').trim();
+      const sttNvl=parseInt(col0);
+      if(sttNvl===1){
+        drinkIdx++;
+        if(drinkIdx>200) break;
+        _nvlRecipeMap[drinkIdx]=[];
+      }
+      if(!drinkIdx||isNaN(sttNvl)||sttNvl<1) continue;
+      const maNVL=(r[1]||'').trim();
+      const tenNVL=(r[2]||'').trim();
+      const qtyM=parseFloat((r[3]||'').replace(',','.'))||0;
+      const qty1L=parseFloat((r[4]||'').replace(',','.'))||0;
+      const dvt=(r[5]||'').trim();
+      if(!maNVL&&!tenNVL) continue;
+      _nvlRecipeMap[drinkIdx].push({maNVL,tenNVL,qtyM,qty1L,dvt});
+    }
+    _nvlFetchedRecipe=true;
+    console.info('fetchNVLRecipe OK:',Object.keys(_nvlRecipeMap).length,'sections');
+  }catch(e){console.warn('fetchNVLRecipe:',e.message);}
+}
+
+function nvlHandleFile(input){
+  const file=input.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      _nvlSalesRaw=[];
+      if(!data||data.length<2){nvlSetStatus('File trống hoặc không đúng định dạng','error');return;}
+      const headers=data[0]||[];
+      const stores=headers.slice(2).map(h=>(h||'').toString().trim()).filter(Boolean);
+      for(let i=1;i<data.length;i++){
+        const row=data[i];if(!row) continue;
+        const maMon=(row[0]||'').toString().trim();
+        const tenMon=(row[1]||'').toString().trim();
+        if(!maMon&&!tenMon) continue;
+        stores.forEach((ch,j)=>{
+          const sl=parseFloat(row[j+2])||0;
+          if(sl>0) _nvlSalesRaw.push({maMon,tenMon,chiNhanh:ch,sl});
+        });
+      }
+      const fileLabel=document.getElementById('nvlFileName');
+      if(fileLabel) fileLabel.textContent=`✅ ${file.name} (${_nvlSalesRaw.length} dòng dữ liệu)`;
+      nvlSetStatus(`Đã tải ${_nvlSalesRaw.length} dòng từ ${file.name}. Nhấn "Tính toán" để so sánh.`,'ok');
+    }catch(err){nvlSetStatus('Lỗi đọc file: '+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function nvlSetStatus(msg,type){
+  const el=document.getElementById('nvlStatus');if(!el) return;
+  el.innerHTML=msg;
+  el.style.color=type==='error'?'#c53030':type==='ok'?'#1a6b3c':'#2b6cb0';
+}
+
+async function initNVLTab(){
+  const now=new Date();
+  const mSel=document.getElementById('nvlMonth');
+  const ySel=document.getElementById('nvlYear');
+  if(mSel&&!mSel.dataset.init){mSel.value=String(now.getMonth()+1);mSel.dataset.init='1';}
+  if(ySel&&!ySel.dataset.init){ySel.value=String(now.getFullYear());ySel.dataset.init='1';}
+  const storeSel=document.getElementById('nvlStore');
+  if(storeSel&&!storeSel.dataset.init){
+    storeSel.innerHTML='<option value="">Tất cả cửa hàng</option>';
+    const stores=[...new Set((D_ALL||[]).map(r=>r.chiNhanh).filter(Boolean))].filter(isStoreActive).sort();
+    stores.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;storeSel.appendChild(o);});
+    storeSel.dataset.init='1';
+  }
+  if(!_nvlFetchedRecipe||!_nvlFetchedSTT){
+    nvlSetStatus('Đang tải dữ liệu công thức NVL từ Google Sheets...','loading');
+    await Promise.all([fetchNVLRecipe(),fetchSTTMon()]);
+  }
+  if(!_nvlFetchedRecipe||!_nvlFetchedSTT){
+    nvlSetStatus('⚠ Không tải được dữ liệu từ Google Sheets. Kiểm tra kết nối hoặc quyền truy cập sheet.','error');
+    return;
+  }
+  const recipeCount=Object.keys(_nvlRecipeMap).length;
+  const monCount=Object.keys(_sttMonMap).length;
+  nvlSetStatus(`✅ Sẵn sàng · ${recipeCount} công thức món · ${monCount} mã món trong STT MÓN. Tải file Excel và nhấn "Tính toán".`,'ok');
+}
+
+function nvlCalc(){
+  const month=parseInt(document.getElementById('nvlMonth')?.value||0);
+  const year=parseInt(document.getElementById('nvlYear')?.value||0);
+  const store=(document.getElementById('nvlStore')?.value||'').trim();
+  const view=document.getElementById('nvlView')?.value||'all';
+  if(!month||!year){nvlSetStatus('Chọn tháng/năm trước.','error');return;}
+  if(!_nvlSalesRaw.length){nvlSetStatus('Chưa tải file dữ liệu số lượng món bán.','error');return;}
+  if(!_nvlFetchedRecipe||!Object.keys(_nvlRecipeMap).length){nvlSetStatus('Chưa tải công thức NVL. Đợi vài giây hoặc tải lại tab...','error');return;}
+  if(!_nvlFetchedSTT||!Object.keys(_sttMonMap).length){nvlSetStatus('Chưa tải danh sách STT MÓN. Đợi vài giây...','error');return;}
+
+  // Build lookup maMon → stt
+  const maMonToStt={};
+  Object.entries(_sttMonMap).forEach(([stt,{maMon}])=>{maMonToStt[maMon.toUpperCase()]=parseInt(stt);});
+
+  // Normalize NVL code: base before first dot
+  const baseCode=s=>(s||'').split('.')[0].toUpperCase();
+
+  // Filter sales by store
+  const sales=store?_nvlSalesRaw.filter(r=>r.chiNhanh===store):_nvlSalesRaw;
+
+  // Calculate theoretical usage: {baseNVL → {tenNVL,dvt,canDung}}
+  const usageMap={};
+  const unmapped=[];
+  sales.forEach(({maMon,tenMon,sl})=>{
+    const stt=maMonToStt[maMon.toUpperCase()];
+    if(!stt){if(!unmapped.includes(maMon)) unmapped.push(maMon);return;}
+    const recipe=_nvlRecipeMap[stt]||[];
+    const size=nvlGetSize(tenMon);
+    recipe.forEach(({maNVL,tenNVL,qtyM,qty1L,dvt})=>{
+      if(!maNVL) return;
+      const qty=size==='1L'?qty1L:qtyM;
+      if(!qty) return;
+      const k=baseCode(maNVL);
+      if(!usageMap[k]) usageMap[k]={tenNVL,dvt,canDung:0,maNVL};
+      usageMap[k].canDung+=qty*sl;
+    });
+  });
+
+  // Actual orders from D_ALL
+  const nhomNVL=['NL ĐỘC QUYỀN','VL ĐỘC QUYỀN'];
+  const actualRows=(D_ALL||[]).filter(r=>r.thang===month&&r.nam===year
+    &&nhomNVL.includes(r.loaiHang)
+    &&(store?r.chiNhanh===store:isStoreActive(r.chiNhanh))
+    &&r.maHang);
+  const actualMap={};
+  const actualNameMap={};
+  actualRows.forEach(r=>{
+    const k=baseCode(r.maHang);
+    actualMap[k]=(actualMap[k]||0)+(r.sl||0);
+    if(!actualNameMap[k]) actualNameMap[k]=r.tenHang||r.maHang;
+  });
+
+  // Merge all NVL keys
+  const allKeys=new Set([...Object.keys(usageMap),...Object.keys(actualMap)]);
+  let tableRows=[];
+  allKeys.forEach(k=>{
+    const u=usageMap[k];
+    const canDung=u?u.canDung:0;
+    const daNhap=actualMap[k]||0;
+    const chenh=daNhap-canDung;
+    const tenNVL=u?u.tenNVL:(actualNameMap[k]||k);
+    const dvt=u?u.dvt:'';
+    const maNVL=u?u.maNVL:k;
+    tableRows.push({maNVL,tenNVL,dvt,canDung,daNhap,chenh});
+  });
+
+  // Sort by |chenh| desc
+  tableRows.sort((a,b)=>Math.abs(b.chenh)-Math.abs(a.chenh)||(a.tenNVL||'').localeCompare(b.tenNVL||'','vi'));
+
+  // Filter by view
+  if(view==='warn') tableRows=tableRows.filter(r=>Math.abs(r.chenh)>=0.5);
+  if(view==='miss') tableRows=tableRows.filter(r=>r.canDung>0&&r.daNhap===0);
+
+  _nvlLastRows=tableRows;
+  nvlRenderTable(tableRows,month,year,store);
+
+  const warns=unmapped.length?`<br><span style="color:#c53030;font-size:11px">⚠ ${unmapped.length} mã không có trong STT MÓN: ${unmapped.slice(0,5).join(', ')}${unmapped.length>5?'...':''}</span>`:'';
+  nvlSetStatus(`✅ ${tableRows.length} NVL · T${month}/${year}${store?' · '+store:''}${warns}`,'ok');
+}
+
+function nvlRenderTable(rows,month,year,store){
+  const fQ=n=>{
+    if(!n||isNaN(n)||n===0) return '–';
+    const v=Math.round(n*100)/100;
+    return v%1===0?fmt(v):v.toLocaleString('vi-VN',{maximumFractionDigits:2});
+  };
+  const thead=`<tr>
+    <th style="text-align:center;width:28px">#</th>
+    <th style="min-width:100px">Mã NVL</th>
+    <th style="min-width:180px">Tên NVL</th>
+    <th style="width:55px;text-align:center">ĐVT</th>
+    <th style="text-align:right;width:110px;background:#fffbeb;color:#7a5800">Cần Dùng<br><span style="font-size:9px;font-weight:400">(lý thuyết)</span></th>
+    <th style="text-align:right;width:110px;background:#e8f5ee;color:#1a6b3c">Đã Nhập<br><span style="font-size:9px;font-weight:400">(thực tế)</span></th>
+    <th style="text-align:right;width:110px">Chênh Lệch</th>
+    <th style="width:110px;text-align:center">Trạng thái</th>
+  </tr>`;
+  let tbody='';
+  rows.forEach((r,i)=>{
+    const chenh=r.chenh;
+    const isMissing=r.canDung>0&&r.daNhap===0;
+    let badge,chC;
+    if(isMissing){badge=`<span style="background:#fff0f0;color:#c53030;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">⛔ Chưa nhập</span>`;chC='#c53030';}
+    else if(Math.abs(chenh)<0.5){badge=`<span style="background:#e8f5ee;color:#1a6b3c;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">✅ Khớp</span>`;chC='#1a6b3c';}
+    else if(chenh>0){badge=`<span style="background:#fffbeb;color:#7a5800;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">⬆ Nhập thừa</span>`;chC='#d69e2e';}
+    else{badge=`<span style="background:#fff0f0;color:#c53030;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700">⬇ Nhập thiếu</span>`;chC='#c53030';}
+    tbody+=`<tr${isMissing?' style="background:#fff8f8"':''}>
+      <td style="text-align:center;color:#888">${i+1}</td>
+      <td style="font-family:monospace;font-size:11px;color:#4a5568">${r.maNVL||'–'}</td>
+      <td style="font-weight:600">${r.tenNVL||'–'}</td>
+      <td style="text-align:center;color:#888;font-size:11px">${r.dvt||'–'}</td>
+      <td style="text-align:right;background:#fffdf0;font-weight:600">${fQ(r.canDung)}</td>
+      <td style="text-align:right;background:#f0fff4;font-weight:600">${fQ(r.daNhap)}</td>
+      <td style="text-align:right;color:${chC};font-weight:700">${chenh>0.005?'+':''}${fQ(chenh)}</td>
+      <td style="text-align:center">${badge}</td>
+    </tr>`;
+  });
+  if(!tbody) tbody=`<tr><td colspan="8" style="text-align:center;color:#aaa;padding:30px">Không có dữ liệu</td></tr>`;
+  document.getElementById('nvlThead').innerHTML=thead;
+  document.getElementById('nvlTbody').innerHTML=tbody;
+  const wrap=document.getElementById('nvlTableWrap');if(wrap) wrap.style.display='';
+  const title=document.getElementById('nvlTableTitle');
+  if(title) title.textContent=`So sánh NVL · T${month}/${year}${store?' · '+store:''}`;
+  const sub=document.getElementById('nvlTableSub');
+  if(sub) sub.textContent=`${rows.length} nguyên vật liệu`;
+}
+
+function nvlExportExcel(){
+  if(!_nvlLastRows.length){nvlSetStatus('Tính toán trước khi xuất Excel.','error');return;}
+  const month=parseInt(document.getElementById('nvlMonth')?.value||0);
+  const year=parseInt(document.getElementById('nvlYear')?.value||0);
+  const store=(document.getElementById('nvlStore')?.value||'').trim();
+  const fQ=n=>(!n||isNaN(n)||n===0)?0:Math.round(n*100)/100;
+  const header=['#','Mã NVL','Tên NVL','ĐVT','Cần Dùng (lý thuyết)','Đã Nhập (thực tế)','Chênh Lệch','Trạng thái'];
+  const statusText=r=>{
+    if(r.canDung>0&&r.daNhap===0) return 'Chưa nhập';
+    if(Math.abs(r.chenh)<0.5) return 'Khớp';
+    return r.chenh>0?'Nhập thừa':'Nhập thiếu';
+  };
+  const data=[header,..._nvlLastRows.map((r,i)=>[i+1,r.maNVL,r.tenNVL,r.dvt,fQ(r.canDung),fQ(r.daNhap),fQ(r.chenh),statusText(r)])];
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:4},{wch:14},{wch:35},{wch:10},{wch:16},{wch:16},{wch:14},{wch:14}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,`NVL T${month}-${year}`);
+  XLSX.writeFile(wb,`NVL_T${month}_${year}${store?'_'+store:''}.xlsx`);
 }
 
 // ===== KHỞI TẠO RENDER =====
