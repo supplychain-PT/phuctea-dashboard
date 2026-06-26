@@ -1380,6 +1380,7 @@ tr:last-child td{border-bottom:none}
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <button class="btn" onclick="nvlCalc()" style="padding:7px 18px;font-size:13px">🔍 Tính toán</button>
       <button class="btn" onclick="nvlExportExcel()" style="padding:7px 18px;font-size:13px;background:#2b6cb0">⬇️ Xuất Excel</button>
+      <button class="btn" onclick="nvlReload()" style="padding:7px 18px;font-size:13px;background:#718096" title="Tải lại công thức NVL và STT MÓN từ Google Sheets">🔄 Tải lại dữ liệu</button>
       <div id="nvlStatus" style="font-size:12px;color:#2b6cb0;font-weight:600">Đang tải dữ liệu công thức NVL từ Google Sheets...</div>
     </div>
     <div id="nvlDebugBox" style="margin-top:10px;font-size:11px;color:#555;background:#f0f4ff;border:1px solid #c3d3f7;border-radius:6px;padding:8px 12px;display:none;line-height:1.8"></div>
@@ -6387,6 +6388,15 @@ function nvlSetStatus(msg,type){
   const el=document.getElementById('nvlStatus');if(!el) return;
   el.innerHTML=msg;
   el.style.color=type==='error'?'#c53030':type==='ok'?'#1a6b3c':'#2b6cb0';
+}
+
+async function nvlReload(){
+  _nvlFetchedRecipe=false;_nvlFetchedSTT=false;
+  _nvlRecipeMap={};_sttMonMap={};
+  nvlSetStatus('Đang tải lại...','loading');
+  await Promise.all([fetchNVLRecipe(),fetchSTTMon()]);
+  const rc=Object.keys(_nvlRecipeMap).length,mc=Object.keys(_sttMonMap).length;
+  nvlSetStatus(`✅ Tải lại xong · ${rc} công thức · ${mc} mã món`,'ok');
 }
 
 async function initNVLTab(){
