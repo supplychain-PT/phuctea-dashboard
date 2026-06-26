@@ -6434,17 +6434,27 @@ function nvlCalc(){
   if(!_nvlFetchedRecipe||!Object.keys(_nvlRecipeMap).length){nvlSetStatus('Chưa tải công thức NVL. Đợi vài giây hoặc tải lại tab...','error');return;}
   if(!_nvlFetchedSTT||!Object.keys(_sttMonMap).length){nvlSetStatus('Chưa tải danh sách STT MÓN. Đợi vài giây...','error');return;}
 
-  // Build lookup maMon → stt
+  // Normalize tên món: "Trà Sữa Phúc (Size M)" ↔ "Trà Sữa Phúc - Size M"
+  const normTen=s=>(s||'').toLowerCase().replace(/[()\-_\.]/g,' ').replace(/\s+/g,' ').trim();
+
+  // Build lookup: maMon code → stt AND tenMon (normalized) → stt
   const maMonToStt={};
-  Object.entries(_sttMonMap).forEach(([stt,{maMon}])=>{maMonToStt[maMon.toUpperCase()]=parseInt(stt);});
+  const tenMonToStt={};
+  Object.entries(_sttMonMap).forEach(([stt,{maMon,tenMon}])=>{
+    maMonToStt[maMon.toUpperCase()]=parseInt(stt);
+    if(tenMon) tenMonToStt[normTen(tenMon)]=parseInt(stt);
+  });
 
   // Normalize NVL code: base before first dot
   const baseCode=s=>(s||'').split('.')[0].toUpperCase();
 
-  // Filter sales by store — match sheet name vs chiNhanh (flexible: startsWith or includes)
+  // Filter sales by store — flexible: exact, normalize, or one contains the other
   const storeNorm=s=>(s||'').toLowerCase().replace(/\s+/g,'');
   const sales=store
-    ?_nvlSalesRaw.filter(r=>r.chiNhanh===store||storeNorm(r.chiNhanh)===storeNorm(store)||storeNorm(store).startsWith(storeNorm(r.chiNhanh))||storeNorm(r.chiNhanh).startsWith(storeNorm(store)))
+    ?_nvlSalesRaw.filter(r=>{
+        const rn=storeNorm(r.chiNhanh),sn=storeNorm(store);
+        return r.chiNhanh===store||rn===sn||rn.includes(sn)||sn.includes(rn);
+      })
     :_nvlSalesRaw;
 
   // Debug info panel
@@ -6467,10 +6477,13 @@ function nvlCalc(){
   const usageMap={};
   const unmapped=[];
   sales.forEach(({maMon,tenMon,sl})=>{
-    const stt=maMonToStt[maMon.toUpperCase()];
+    // Try as code first; fallback to name lookup (for files without Mã Món column)
+    let stt=maMonToStt[maMon.toUpperCase()]||tenMonToStt[normTen(maMon)];
     if(!stt){if(!unmapped.includes(maMon)) unmapped.push(maMon);return;}
     const recipe=_nvlRecipeMap[stt]||[];
-    const size=nvlGetSize(tenMon);
+    // Size: if tenMon is a number (= SL in 2-col files), use maMon (= drink name) for size
+    const sizeField=!isNaN(parseFloat(tenMon))?maMon:tenMon;
+    const size=nvlGetSize(sizeField);
     recipe.forEach(({maNVL,tenNVL,qtyM,qty1L,dvt})=>{
       if(!maNVL) return;
       const qty=size==='1L'?qty1L:qtyM;
