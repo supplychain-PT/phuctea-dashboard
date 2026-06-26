@@ -1382,6 +1382,7 @@ tr:last-child td{border-bottom:none}
       <button class="btn" onclick="nvlExportExcel()" style="padding:7px 18px;font-size:13px;background:#2b6cb0">⬇️ Xuất Excel</button>
       <div id="nvlStatus" style="font-size:12px;color:#2b6cb0;font-weight:600">Đang tải dữ liệu công thức NVL từ Google Sheets...</div>
     </div>
+    <div id="nvlDebugBox" style="margin-top:10px;font-size:11px;color:#555;background:#f0f4ff;border:1px solid #c3d3f7;border-radius:6px;padding:8px 12px;display:none;line-height:1.8"></div>
   </div>
 
   <!-- Legend -->
@@ -6446,20 +6447,21 @@ function nvlCalc(){
     ?_nvlSalesRaw.filter(r=>r.chiNhanh===store||storeNorm(r.chiNhanh)===storeNorm(store)||storeNorm(store).startsWith(storeNorm(r.chiNhanh))||storeNorm(r.chiNhanh).startsWith(storeNorm(store)))
     :_nvlSalesRaw;
 
-  // Debug log
+  // Debug info panel
   const sheetNames=[...new Set(_nvlSalesRaw.map(r=>r.chiNhanh))];
-  console.log('[NVL Debug]',{
-    recipeMap:Object.keys(_nvlRecipeMap).length,
-    sttMon:Object.keys(_sttMonMap).length,
-    salesTotal:_nvlSalesRaw.length,
-    sheetsInExcel:sheetNames,
-    filteredSales:sales.length,
-    store,
-    sampleSale:_nvlSalesRaw[0],
-    sampleSttMon:Object.entries(_sttMonMap).slice(0,3),
-    sampleMaMonToStt:Object.entries(maMonToStt).slice(0,3),
-    sampleRecipe:_nvlRecipeMap[1]
-  });
+  const sampleSale=_nvlSalesRaw[0];
+  const sampleSttMon=Object.entries(_sttMonMap).slice(0,3).map(([k,v])=>`STT${k}=${v.maMon}`).join(', ');
+  const sampleRecipe=(_nvlRecipeMap[1]||[]).slice(0,2).map(r=>`${r.maNVL}:M=${r.qtyM},1L=${r.qty1L}`).join(' | ');
+  const dbEl=document.getElementById('nvlDebugBox');
+  if(dbEl){dbEl.style.display='block';dbEl.innerHTML=`<b>🔍 Debug info:</b><br>
+    📋 Công thức NVL: <b>${Object.keys(_nvlRecipeMap).length}</b> món &nbsp;|&nbsp;
+    📋 STT MÓN: <b>${Object.keys(_sttMonMap).length}</b> mã &nbsp;|&nbsp;
+    📋 Dữ liệu Excel: <b>${_nvlSalesRaw.length}</b> dòng &nbsp;|&nbsp;
+    📋 Sau lọc CH: <b>${sales.length}</b> dòng<br>
+    🏪 Sheet trong Excel: <b>${sheetNames.join(', ')||'(trống)'}</b><br>
+    📝 Mẫu dòng Excel: <b>${sampleSale?`maMon="${sampleSale.maMon}" tenMon="${sampleSale.tenMon}" sl=${sampleSale.sl} ch="${sampleSale.chiNhanh}"` :'(không có)'}</b><br>
+    📝 Mẫu STT MÓN: <b>${sampleSttMon||'(trống)'}</b><br>
+    📝 Mẫu công thức món 1: <b>${sampleRecipe||'(trống)'}</b>`;
 
   // Calculate theoretical usage: {baseNVL → {tenNVL,dvt,canDung}}
   const usageMap={};
