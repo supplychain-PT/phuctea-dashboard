@@ -6440,8 +6440,26 @@ function nvlCalc(){
   // Normalize NVL code: base before first dot
   const baseCode=s=>(s||'').split('.')[0].toUpperCase();
 
-  // Filter sales by store
-  const sales=store?_nvlSalesRaw.filter(r=>r.chiNhanh===store):_nvlSalesRaw;
+  // Filter sales by store — match sheet name vs chiNhanh (flexible: startsWith or includes)
+  const storeNorm=s=>(s||'').toLowerCase().replace(/\s+/g,'');
+  const sales=store
+    ?_nvlSalesRaw.filter(r=>r.chiNhanh===store||storeNorm(r.chiNhanh)===storeNorm(store)||storeNorm(store).startsWith(storeNorm(r.chiNhanh))||storeNorm(r.chiNhanh).startsWith(storeNorm(store)))
+    :_nvlSalesRaw;
+
+  // Debug log
+  const sheetNames=[...new Set(_nvlSalesRaw.map(r=>r.chiNhanh))];
+  console.log('[NVL Debug]',{
+    recipeMap:Object.keys(_nvlRecipeMap).length,
+    sttMon:Object.keys(_sttMonMap).length,
+    salesTotal:_nvlSalesRaw.length,
+    sheetsInExcel:sheetNames,
+    filteredSales:sales.length,
+    store,
+    sampleSale:_nvlSalesRaw[0],
+    sampleSttMon:Object.entries(_sttMonMap).slice(0,3),
+    sampleMaMonToStt:Object.entries(maMonToStt).slice(0,3),
+    sampleRecipe:_nvlRecipeMap[1]
+  });
 
   // Calculate theoretical usage: {baseNVL → {tenNVL,dvt,canDung}}
   const usageMap={};
