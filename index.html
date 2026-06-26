@@ -6486,7 +6486,9 @@ async function nvlReload(){
   nvlSetStatus('Đang tải lại...','loading');
   await Promise.all([fetchNVLRecipe(),fetchSTTMon()]);
   const rc=Object.keys(_nvlRecipeMap).filter(k=>!k.startsWith('CODE:')).length,mc=Object.keys(_sttMonMap).length;
-  nvlSetStatus(`✅ Tải lại xong · ${rc} công thức · ${mc} mã món`,'ok');
+  const rawSnippet=(_nvlRawDebugRows||[]).slice(0,6).map((r,i)=>`<br><code>[${i}] ${r.replace(/</g,'&lt;')}</code>`).join('');
+  const keySnippet=Object.keys(_nvlRecipeMap).filter(k=>!k.startsWith('CODE:')).slice(0,3).map(k=>`"${k}"`).join(', ');
+  nvlSetStatus(`✅ Tải lại xong · ${rc} công thức · ${mc} mã món${rc===0?`<br>⚠ Keys mẫu: ${keySnippet||'(trống)'} · CSV rows:${rawSnippet}`:` · Keys: ${keySnippet}`}`,'ok');
 }
 
 async function initNVLTab(){
