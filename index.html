@@ -6328,8 +6328,8 @@ async function fetchSTTMon(){
 
 let _nvlRawDebugRows=[];
 async function fetchNVLRecipe(){
-  const sheetEnc=encodeURIComponent('NVL CHO TỪNG MÓN');
-  const url=`https://docs.google.com/spreadsheets/d/${SALES_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetEnc}&_t=${Date.now()}`;
+  // Use /export endpoint (gid=1417601991) — gviz/tq has aggressive server-side cache
+  const url=`https://docs.google.com/spreadsheets/d/${SALES_SHEET_ID}/export?format=csv&gid=1417601991&t=${Date.now()}`;
   try{
     const resp=await fetch(url,{cache:'no-store'});
     if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -6347,37 +6347,44 @@ async function fetchNVLRecipe(){
       const col1=(r[1]||'').trim();
       const sttNvl=parseInt(col0);
       if(isNaN(sttNvl)){
+        // Separator row (empty col0 + "Mã NVL" in col1) marks start of new un-named section
+        if(col0===''&&(col1==='Mã NVL'||col1==='Ma NVL')){currentKey=null;headerBuf=null;continue;}
         const isSkip=col0==='STT'||col0==='Mã NVL'||col0==='Mã Món'
                     ||col0.startsWith('—')||col0.startsWith('-')||col0.startsWith('*');
-        if(!isSkip&&(col0||col1)) headerBuf=r;
+        if(!isSkip&&col0) headerBuf=r; // col0 must be non-empty (drink name lives in col0)
         continue;
       }
       if(sttNvl===1&&headerBuf){
         const h0=(headerBuf[0]||'').trim();
-        const h1=(headerBuf[1]||'').trim();
-        const h2=(headerBuf[2]||'').trim();
-        let drinkName='',drinkCode='';
-        if(!h0){
-          drinkCode=h1;drinkName=h2||h1;
-        } else {
-          const hasViet=/[À-ỹ\s]/.test(h0);
-          if(!hasViet&&h0.length<=20){drinkCode=h0;drinkName=h1||h0;}
-          else{drinkName=h0;if(h1&&!/[À-ỹ\s]/.test(h1)&&h1.length<=15)drinkCode=h1;}
+        // Parse "[N] CODE | Drink Name (size X) STT" format
+        let raw=h0.replace(/^\[\d+\]\s*/,'').replace(/\s+STT\s*$/i,'').trim();
+        let drinkName=raw,drinkCode='';
+        if(raw.includes('|')){
+          const parts=raw.split('|');
+          drinkCode=parts[0].trim();
+          drinkName=parts.slice(1).join('|').trim();
         }
-        currentKey=normK(drinkName)||normK(drinkCode);
+        // Extract size from parentheses: (size M)→'M', (size Xô)/(size 1 Lít)→'1L'
+        let sectionSize='M';
+        const szM=drinkName.match(/\(([^)]+)\)/);
+        if(szM){sectionSize=nvlGetSize(szM[1]);drinkName=drinkName.replace(/\([^)]+\)/,'').trim();}
+        drinkName=drinkName.replace(/\s+STT\s*$/i,'').trim();
+        const normDrink=normK(drinkName);
+        currentKey=normDrink?normDrink+'|'+sectionSize:'';
         if(currentKey&&!_nvlRecipeMap[currentKey]) _nvlRecipeMap[currentKey]=[];
-        if(drinkCode&&drinkCode.toUpperCase()!==currentKey.toUpperCase())
-          _nvlRecipeMap['CODE:'+drinkCode.toUpperCase()]=_nvlRecipeMap[currentKey];
+        if(drinkCode){
+          const ck='CODE:'+drinkCode.toUpperCase()+'|'+sectionSize;
+          if(!_nvlRecipeMap[ck]) _nvlRecipeMap[ck]=_nvlRecipeMap[currentKey];
+        }
         headerBuf=null;
       }
       if(sttNvl<1||!currentKey) continue;
       const maNVL=col1;
       const tenNVL=(r[2]||'').trim();
-      const qtyM=parseSalesNum((r[3]||'').toString())||0;
-      const qty1L=parseSalesNum((r[4]||'').toString())||0;
-      const dvt=(r[5]||'').trim();
+      const qty=parseSalesNum((r[3]||'').toString())||0; // single qty column per size section
+      const dvt=(r[4]||'').trim();
       if(!maNVL&&!tenNVL) continue;
-      _nvlRecipeMap[currentKey].push({maNVL,tenNVL,qtyM,qty1L,dvt});
+      _nvlRecipeMap[currentKey].push({maNVL,tenNVL,qty,dvt});
     }
     _nvlFetchedRecipe=true;
     console.info('fetchNVLRecipe OK:',Object.keys(_nvlRecipeMap).filter(k=>!k.startsWith('CODE:')).length,'món');
@@ -6458,16 +6465,23 @@ function nvlShowRecipe(){
     }
   });
 
-  // Look up recipe by base name (strip size)
+  // Look up M and 1L recipes separately (each section = 1 drink + 1 size)
   const baseName=stripSize(foundName||q);
-  const items=_nvlRecipeMap[baseName]||_nvlRecipeMap[normTen(foundName||q)]
-             ||_nvlRecipeMap['CODE:'+foundCode]||[];
+  const fn=normTen(foundName||q);
+  const codeU='CODE:'+foundCode;
+  const recipeM=_nvlRecipeMap[baseName+'|M']||_nvlRecipeMap[fn+'|M']||_nvlRecipeMap[codeU+'|M']||[];
+  const recipe1L=_nvlRecipeMap[baseName+'|1L']||_nvlRecipeMap[fn+'|1L']||_nvlRecipeMap[codeU+'|1L']||[];
+  // Merge into combined view keyed by maNVL
+  const combined={};
+  recipeM.forEach(({maNVL,tenNVL,qty,dvt})=>{if(maNVL){if(!combined[maNVL])combined[maNVL]={tenNVL,dvt,qtyM:0,qty1L:0};combined[maNVL].qtyM=qty;}});
+  recipe1L.forEach(({maNVL,tenNVL,qty,dvt})=>{if(maNVL){if(!combined[maNVL])combined[maNVL]={tenNVL,dvt,qtyM:0,qty1L:0};combined[maNVL].qty1L=qty;}});
+  const items=Object.entries(combined).map(([maNVL,v])=>({maNVL,...v}));
 
   if(!items.length){
-    info.innerHTML=`<span style="color:#c0392b">Không tìm thấy công thức cho "${q}". Key tra: "${baseName}"</span>`;
+    info.innerHTML=`<span style="color:#c0392b">Không tìm thấy công thức cho "${q}". Key tra: "${baseName}|M" / "${baseName}|1L"</span>`;
     thead.innerHTML='';tbody.innerHTML='';detail.style.display='block';return;
   }
-  info.innerHTML=`<strong>${foundName||q}</strong> · ${items.length} NVL trong công thức · Key: <code>${baseName}</code>`;
+  info.innerHTML=`<strong>${foundName||q}</strong> · ${items.length} NVL · Key: <code>${baseName}|M</code> (${recipeM.length} dòng) / <code>${baseName}|1L</code> (${recipe1L.length} dòng)`;
   thead.innerHTML='<tr><th>STT</th><th>Mã NVL</th><th>Tên NVL</th><th>Qty Size M</th><th>Qty 1L/Xô</th><th>ĐVT</th></tr>';
   tbody.innerHTML=items.map((it,i)=>`<tr>
     <td style="text-align:center">${i+1}</td>
@@ -6542,13 +6556,6 @@ function nvlCalc(){
     .replace(/\bsize\s*[mslx]\b/g,'').replace(/\bxô\b/g,'').replace(/\bxo\b/g,'')
     .replace(/\b\d+\s*l\b/g,'').replace(/\s+/g,' ').trim();
 
-  const maMonToStt={};
-  const tenMonToStt={};
-  Object.entries(_sttMonMap).forEach(([stt,{maMon,tenMon}])=>{
-    maMonToStt[maMon.toUpperCase()]=parseInt(stt);
-    if(tenMon) tenMonToStt[normTen(tenMon)]=parseInt(stt);
-  });
-
   const baseCode=s=>(s||'').split('.')[0].toUpperCase();
 
   const storeNorm=s=>(s||'').toLowerCase().replace(/\s+/g,'');
@@ -6565,7 +6572,7 @@ function nvlCalc(){
   const sampleSttMon=Object.entries(_sttMonMap).slice(0,3).map(([k,v])=>`STT${k}=${v.maMon}`).join(', ');
   const recipeKeys=Object.keys(_nvlRecipeMap).filter(k=>!k.startsWith('CODE:'));
   const sampleRecipeKey=recipeKeys[0]||'';
-  const sampleRecipe=(sampleRecipeKey?(_nvlRecipeMap[sampleRecipeKey]||[]):[] ).slice(0,2).map(r=>`${r.maNVL}:M=${r.qtyM},1L=${r.qty1L}`).join(' | ');
+  const sampleRecipe=(sampleRecipeKey?(_nvlRecipeMap[sampleRecipeKey]||[]):[] ).slice(0,2).map(r=>`${r.maNVL}:qty=${r.qty}`).join(' | ');
   const dbEl=document.getElementById('nvlDebugBox');
   if(dbEl){dbEl.style.display='block';dbEl.innerHTML=`<b>🔍 Debug info:</b><br>
     📋 Công thức NVL: <b>${recipeKeys.length}</b> món &nbsp;|&nbsp;
@@ -6581,21 +6588,17 @@ function nvlCalc(){
   const usageMap={};
   const unmapped=[];
   sales.forEach(({maMon,tenMon,sl})=>{
-    // Lookup stt via code or name
-    let stt=maMonToStt[maMon.toUpperCase()]||tenMonToStt[normTen(maMon)];
-    const sttInfo=stt?_sttMonMap[stt]:null;
-    const fullName=sttInfo?.tenMon||'';
-    // Recipe key = base name (strip size suffix)
-    const baseName=stripSize(fullName);
-    const recipe=_nvlRecipeMap[baseName]||_nvlRecipeMap[normTen(fullName)]
-                ||_nvlRecipeMap['CODE:'+maMon.toUpperCase()]||[];
+    // Use drink name directly from sales (tenMon = name, or maMon if tenMon is a number)
+    const drinkNameRaw=!isNaN(parseFloat(tenMon))?maMon:tenMon;
+    const size=nvlGetSize(drinkNameRaw);
+    const baseName=stripSize(drinkNameRaw);
+    const sizeKey=baseName+'|'+size;
+    const recipe=_nvlRecipeMap[sizeKey]
+                ||_nvlRecipeMap['CODE:'+maMon.toUpperCase()+'|'+size]
+                ||[];
     if(!recipe.length){if(!unmapped.includes(maMon)) unmapped.push(maMon);return;}
-    // Size: if tenMon is a number (= SL in 2-col files), use maMon (= drink name) for size
-    const sizeField=!isNaN(parseFloat(tenMon))?maMon:tenMon;
-    const size=nvlGetSize(sizeField);
-    recipe.forEach(({maNVL,tenNVL,qtyM,qty1L,dvt})=>{
+    recipe.forEach(({maNVL,tenNVL,qty,dvt})=>{
       if(!maNVL) return;
-      const qty=size==='1L'?qty1L:qtyM;
       if(!qty) return;
       const k=baseCode(maNVL);
       if(!usageMap[k]) usageMap[k]={tenNVL,dvt,canDung:0,maNVL};
