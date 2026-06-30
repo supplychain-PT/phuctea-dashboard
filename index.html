@@ -6642,8 +6642,13 @@ function nvlCalc(){
     tableRows.push({maNVL,tenNVL,dvt,canDung,daNhap,chenh});
   });
 
-  // Sort by |chenh| desc
-  tableRows.sort((a,b)=>Math.abs(b.chenh)-Math.abs(a.chenh)||(a.tenNVL||'').localeCompare(b.tenNVL||'','vi'));
+  // Sort: Nhập thừa → Nhập thiếu → Chưa nhập → Khớp; trong mỗi nhóm theo |chenh| giảm dần
+  const _nvlPri=r=>{
+    if(r.canDung>0&&r.daNhap===0) return 2;
+    if(Math.abs(r.chenh)<0.5) return 3;
+    return r.chenh>0?0:1;
+  };
+  tableRows.sort((a,b)=>_nvlPri(a)-_nvlPri(b)||Math.abs(b.chenh)-Math.abs(a.chenh));
 
   // Filter by view
   if(view==='warn') tableRows=tableRows.filter(r=>Math.abs(r.chenh)>=0.5);
