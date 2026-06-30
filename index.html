@@ -6616,10 +6616,16 @@ function nvlCalc(){
   const catalogMap={};
   (CATALOG||[]).forEach(c=>{if(c.maHang) catalogMap[baseCode(c.maHang)]=c.tenHang||c.maHang;});
 
+  // Quy đổi đơn vị: D_ALL ghi theo đơn vị lớn hơn, recipe dùng đơn vị cơ bản
+  // { baseCode(maHang): hệ số } — 1 đơn vị D_ALL = N đơn vị recipe
+  const NVL_UNIT_CONV={
+    'NVL010124':6   // Trân Châu Giòn Phúc Tea: 1 thùng (D_ALL) = 6 gói (recipe)
+  };
   const actualMap={};
   actualRows.forEach(r=>{
     const k=baseCode(r.maHang);
-    actualMap[k]=(actualMap[k]||0)+(r.sl||0);
+    const conv=NVL_UNIT_CONV[k]||1;
+    actualMap[k]=(actualMap[k]||0)+(r.sl||0)*conv;
   });
 
   // Merge all NVL keys
