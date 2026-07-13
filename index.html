@@ -4646,6 +4646,12 @@ function applySheetKPI(rows){
   }
   const R_TSLN_KH=findTSLNRow();
 
+  // Giá trị KH mặc định — áp dụng khi Google Sheet chưa có dữ liệu tháng đó
+  const _KH_DEFAULT={
+    tl_kh:   {7:24},   // Tỷ lệ DT BH / DT Toàn hệ thống T7: 24%
+    tsln_kh: {7:26}    // Tỷ suất lợi nhuận T7: 26%
+  };
+
   // Col index: col[1]=TỔNG, col[2]=T1, col[3]=T2, ..., col[13]=T12
   for(let m=1;m<=12;m++){
     const ci=m+1;
@@ -4653,6 +4659,11 @@ function applySheetKPI(rows){
     setSheetField('tl_kh_'+m, R_TL_KH[ci]);
     setSheetField('ht_tt_'+m, R_HT_TT[ci]);
     setSheetField('cn_kh_'+m, R_CN_KH[ci]);
+    // Fallback tl_kh từ defaults nếu sheet không có
+    if(_KH_DEFAULT.tl_kh[m]!==undefined){
+      const _eTL=document.getElementById('tl_kh_'+m);
+      if(_eTL&&!_eTL.value){_eTL.value=_KH_DEFAULT.tl_kh[m];}
+    }
     // Cache DT BH KH trực tiếp từ sheet (row "DT Bán hàng Mục tiêu")
     if(R_DT_BH_KH[ci]!==undefined){
       const v=parseViNum(R_DT_BH_KH[ci]);
@@ -4662,6 +4673,10 @@ function applySheetKPI(rows){
     if(R_TSLN_KH[ci]!==undefined){
       const v=parseSalesNum(R_TSLN_KH[ci]);
       if(!isNaN(v))_kpiCache['tsln_kh_'+m]=v*100; // parseSalesNum ÷100 → nhân lại
+    }
+    // Fallback TSLN KH từ defaults nếu sheet không có
+    if(_KH_DEFAULT.tsln_kh[m]!==undefined&&_kpiCache['tsln_kh_'+m]===undefined){
+      _kpiCache['tsln_kh_'+m]=_KH_DEFAULT.tsln_kh[m];
     }
   }
   console.log('[Sheet] ht_kh T1=',R_HT_KH[2],' tl_kh T1=',R_TL_KH[2],' dt_bh_kh T1=',R_DT_BH_KH[2],' cn_kh T1=',R_CN_KH[2]);
