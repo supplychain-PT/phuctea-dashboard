@@ -1929,7 +1929,7 @@ function renderKPI(){
   // 1. Tỷ lệ DT BH / DT HT
   // Dùng _readKH để đọc từ cache + DOM (giống BOD), tính trực tiếp từ filt
   const htTT_m=_readKH('ht_tt',_selM);
-  const dtBH_filt=filt.filter(r=>!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
+  const dtBH_filt=D_CY.filter(r=>!isBHExcluded(r)&&r.brand==='PHÚC TEA'&&(_selM?r.thang===_selM:true)).reduce((s,r)=>s+(r.thanhTien||0),0);
   const tlTT=htTT_m&&htTT_m>0 ? dtBH_filt/htTT_m*100 : null;
   const tlKH=_readKH('tl_kh',_selM);
   const ktlTT=document.getElementById('ktl_tt');
@@ -3444,12 +3444,20 @@ function renderBOD(){
   const ln_kh_q=qMonth.reduce((s,m)=>{const v=getKH('ln_kh',m);return s+(v||0);},0)||null;
   const ln_kh_y=[...Array(12).keys()].reduce((s,i)=>{const v=getKH('ln_kh',i+1);return s+(v||0);},0)||null;
 
-  // Thực tế
+  // Thực tế — tách Phúc Tea và The Hoa
   const rDay=rows('day'), rMon=rows('month'), rQ=rows('quarter'), rY=data2026;
-  const dt_d=sumF(rDay,'thanhTien'), dt_m=sumF(rMon,'thanhTien');
-  const dt_q=sumF(rQ,'thanhTien'), dt_y=sumF(rY,'thanhTien');
-  const ln_d=sumF(rDay,'lnThuc'), ln_m=sumF(rMon,'lnThuc');
-  const ln_q=sumF(rQ,'lnThuc'), ln_y=sumF(rY,'lnThuc');
+  const rPT_Day=rDay.filter(r=>r.brand==='PHÚC TEA'), rPT_Mon=rMon.filter(r=>r.brand==='PHÚC TEA');
+  const rPT_Q=rQ.filter(r=>r.brand==='PHÚC TEA'), rPT_Y=rY.filter(r=>r.brand==='PHÚC TEA');
+  const rTH_Day=rDay.filter(r=>r.brand==='THE HOA'), rTH_Mon=rMon.filter(r=>r.brand==='THE HOA');
+  const rTH_Q=rQ.filter(r=>r.brand==='THE HOA'), rTH_Y=rY.filter(r=>r.brand==='THE HOA');
+  const dt_pt_d=sumF(rPT_Day,'thanhTien'), dt_pt_m=sumF(rPT_Mon,'thanhTien');
+  const dt_pt_q=sumF(rPT_Q,'thanhTien'), dt_pt_y=sumF(rPT_Y,'thanhTien');
+  const dt_th_d=sumF(rTH_Day,'thanhTien'), dt_th_m=sumF(rTH_Mon,'thanhTien');
+  const dt_th_q=sumF(rTH_Q,'thanhTien'), dt_th_y=sumF(rTH_Y,'thanhTien');
+  const ln_pt_d=sumF(rPT_Day,'lnThuc'), ln_pt_m=sumF(rPT_Mon,'lnThuc');
+  const ln_pt_q=sumF(rPT_Q,'lnThuc'), ln_pt_y=sumF(rPT_Y,'lnThuc');
+  const ln_th_d=sumF(rTH_Day,'lnThuc'), ln_th_m=sumF(rTH_Mon,'lnThuc');
+  const ln_th_q=sumF(rTH_Q,'lnThuc'), ln_th_y=sumF(rTH_Y,'lnThuc');
 
   // Cập nhật header
   const lastDateStr=`${String(lastDay).padStart(2,'0')}/${String(lastMonth).padStart(2,'0')}/${lastYear}`;
@@ -3480,13 +3488,20 @@ function renderBOD(){
     </div>`;
   }
 
-  // DT cells — target ngày = target tháng * paceRatio (tiến độ)
+  // DT cells — Phúc Tea và The Hoa riêng biệt
   const dt_kh_d = dt_kh_m ? dt_kh_m * paceRatio : null;
+  const _bHdr=(label,color,bg)=>`<div style="grid-column:1/-1;background:${bg};color:${color};font-size:11px;font-weight:700;padding:4px 16px;border-bottom:1px solid var(--bdr)">${label}</div>`;
   document.getElementById('bodDTGrid').innerHTML =
-    cell('Trong ngày', dt_d, dt_kh_d, false, dt_kh_m?`KH ngày ≈ ${fmtB(dt_kh_d)}`:'Chưa có KH') +
-    cell(`Lũy kế T${lastMonth}`, dt_m, dt_kh_m, false, 'Chưa có KH tháng') +
-    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_q, dt_kh_q||null, false, 'Chưa có KH quý') +
-    cell('Lũy kế năm', dt_y, dt_kh_y||null, false, 'Chưa có KH năm');
+    _bHdr('🍵 PHÚC TEA','#1a6b3c','#f0fff4') +
+    cell('Trong ngày', dt_pt_d, dt_kh_d, false, dt_kh_m?null:'Chưa có KH') +
+    cell(`Lũy kế T${lastMonth}`, dt_pt_m, dt_kh_m, false, 'Chưa có KH') +
+    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_pt_q, dt_kh_q||null, false, '') +
+    cell('Lũy kế năm', dt_pt_y, dt_kh_y||null, false, '') +
+    _bHdr('🌸 THE HOA','#6b21a8','#f3e8ff') +
+    cell('Trong ngày', dt_th_d, null, false, '') +
+    cell(`Lũy kế T${lastMonth}`, dt_th_m, null, false, '') +
+    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_th_q, null, false, '') +
+    cell('Lũy kế năm', dt_th_y, null, false, '');
 
   // LN + TSLN cells
   const ln_kh_d = ln_kh_m ? ln_kh_m * paceRatio : null;
@@ -3508,15 +3523,21 @@ function renderBOD(){
     return `<div class="bod-cell"><div class="bod-cell-label">${label}</div>${valHtml}${subHtml}${achHtml}${lnHtml}${barHtml}</div>`;
   }
   document.getElementById('bodLNGrid').innerHTML =
-    cellLN('TSLN Trong ngày', rDay, tsln_kh_m_v, ln_d, ln_kh_d) +
-    cellLN(`TSLN T${lastMonth}`, rMon, tsln_kh_m_v, ln_m, ln_kh_m) +
-    cellLN(`TSLN Q${Math.ceil(lastMonth/3)}`, rQ, tsln_kh_q_v, ln_q, ln_kh_q) +
-    cellLN('TSLN Năm', rY, tsln_kh_y_v, ln_y, ln_kh_y);
+    _bHdr('🍵 PHÚC TEA','#1a6b3c','#f0fff4') +
+    cellLN('TSLN Trong ngày', rPT_Day, tsln_kh_m_v, ln_pt_d, ln_kh_d) +
+    cellLN(`TSLN T${lastMonth}`, rPT_Mon, tsln_kh_m_v, ln_pt_m, ln_kh_m) +
+    cellLN(`TSLN Q${Math.ceil(lastMonth/3)}`, rPT_Q, tsln_kh_q_v, ln_pt_q, ln_kh_q||null) +
+    cellLN('TSLN Năm', rPT_Y, tsln_kh_y_v, ln_pt_y, ln_kh_y||null) +
+    _bHdr('🌸 THE HOA','#6b21a8','#f3e8ff') +
+    cellLN('TSLN Trong ngày', rTH_Day, null, ln_th_d, null) +
+    cellLN(`TSLN T${lastMonth}`, rTH_Mon, null, ln_th_m, null) +
+    cellLN(`TSLN Q${Math.ceil(lastMonth/3)}`, rTH_Q, null, ln_th_q, null) +
+    cellLN('TSLN Năm', rTH_Y, null, ln_th_y, null);
 
   // Tỷ lệ DT/HT cells
   // DT bán hàng = trừ nhóm theo isBHExcluded (VD ĐQ, HT, và 3 combo đặc biệt)
-  const dtBH_d=sumF(rDay.filter(r=>!isBHExcluded(r)),'thanhTien');
-  const dtBH_m=sumF(rMon.filter(r=>!isBHExcluded(r)),'thanhTien');
+  const dtBH_d=sumF(rPT_Day.filter(r=>!isBHExcluded(r)),'thanhTien');
+  const dtBH_m=sumF(rPT_Mon.filter(r=>!isBHExcluded(r)),'thanhTien');
   const tl_d = ht_tt_m&&ht_tt_m>0 ? dtBH_d*daysInMonth/lastDay/ht_tt_m : null; // ước tính
   const tl_m = ht_tt_m&&ht_tt_m>0 ? dtBH_m/ht_tt_m : null;
   // Ghi cache để Tổng quan đọc
@@ -3530,7 +3551,7 @@ function renderBOD(){
     cell('Tỷ lệ Trong ngày', tl_d, tl_kh_m?tl_kh_m/100:null, true, noHT) +
     cell(`Tỷ lệ T${lastMonth}`, tl_m, tl_kh_m?tl_kh_m/100:null, true, noHT) +
     `<div class="bod-cell"><div class="bod-cell-label">DT HT T${lastMonth}</div><div class="bod-cell-val">${ht_tt_m?fmtB(ht_tt_m):'–'}</div><div class="bod-cell-target">Nhập trong tab KPI</div></div>` +
-    `<div class="bod-cell"><div class="bod-cell-label">DT bán hàng T${lastMonth}</div><div class="bod-cell-val">${fmtB(dtBH_m)}</div><div class="bod-cell-target">Trừ VD ĐQ · HT · 3 combo đặc biệt</div></div>`;
+    `<div class="bod-cell"><div class="bod-cell-label">🍵 DT BH Phúc Tea T${lastMonth}</div><div class="bod-cell-val">${fmtB(dtBH_m)}</div><div class="bod-cell-target">Phúc Tea · trừ VD ĐQ · HT</div></div>`;
 
   // Thu hồi Công nợ
   document.getElementById('bodCNsub').textContent=`Dữ liệu đến ${lastDateStr}`;
