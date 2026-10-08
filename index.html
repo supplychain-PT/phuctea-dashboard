@@ -295,14 +295,20 @@ tr:last-child td{border-bottom:none}
         <div id="ktl_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
         <div id="ktl_hint" style="display:none;font-size:10px;color:#a0aec0;margin-top:3px">💡 Nhập DT HT trong tab KPI</div>
       </div>
-      <div style="flex:1;min-width:190px;background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
-        <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:4px">Tỷ suất Lợi nhuận</div>
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:24px;font-weight:800;color:#2b6cb0" id="ktsln_tt">–</span>
-          <span style="font-size:10px;color:#888">thực tế</span>
+      <div style="flex:1;min-width:220px;background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:8px">Tỷ suất Lợi nhuận</div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;border-right:1px solid #bee3f8;padding-right:10px">
+            <div style="font-size:10px;font-weight:700;color:#1a6b3c;margin-bottom:2px">🍵 Phúc Tea</div>
+            <span style="font-size:20px;font-weight:800;color:#1a6b3c" id="ktsln_pt">–</span>
+            <div style="font-size:11px;color:#888;margin-top:2px" id="ktsln_kh">KH: –</div>
+            <div id="ktsln_badge" style="margin-top:2px;font-size:11px;font-weight:700"></div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:700;color:#6b21a8;margin-bottom:2px">🌸 The Hoa</div>
+            <span style="font-size:20px;font-weight:800;color:#6b21a8" id="ktsln_th">–</span>
+          </div>
         </div>
-        <div style="font-size:11px;color:#888;margin-top:2px" id="ktsln_kh">KH: –</div>
-        <div id="ktsln_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
       </div>
       <div style="flex:1;min-width:190px;background:#fefce8;border:1px solid #fde68a;border-left:4px solid #d69e2e;border-radius:10px;padding:12px 16px">
         <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px">Thu hồi Công nợ</div>
@@ -1940,17 +1946,23 @@ function renderKPI(){
   if(ktlHint)ktlHint.style.display=(tlTT==null)?'block':'none';
   _kpiBadge('ktl_badge',tlTT,tlKH,false);
 
-  // 2. TSLN — dùng công thức BOD: (thanhTien - tongGiaVon) / thanhTien (trước GG)
-  const gvFilt=filt.reduce((s,r)=>s+(r.tongGiaVon||0),0);
-  const tslnTT_bod=dt>0?(dt-gvFilt)/dt*100:0; // BOD tsln_truoc
-  // Ưu tiên giá trị BOD cache cho tháng đang xem, fallback tính từ filt
-  const tslnTT=(_kpiCache['tsln_tt_'+_selM]!=null&&_selM)?_kpiCache['tsln_tt_'+_selM]*100:tslnTT_bod;
+  // 2. TSLN — tách Phúc Tea và The Hoa
+  const filtPT=filt.filter(r=>r.brand==='PHÚC TEA');
+  const filtTH=filt.filter(r=>r.brand==='THE HOA');
+  const dtPT=filtPT.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const gvPT=filtPT.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const dtTH=filtTH.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const gvTH=filtTH.reduce((s,r)=>s+(r.tongGiaVon||0),0);
+  const tslnPT_filt=dtPT>0?(dtPT-gvPT)/dtPT*100:0;
+  const tslnTH=dtTH>0?(dtTH-gvTH)/dtTH*100:0;
   const tslnKH=_readKH('tsln_kh',_selM);
-  const ktsln=document.getElementById('ktsln_tt');
+  const ktsln_pt=document.getElementById('ktsln_pt');
+  const ktsln_th=document.getElementById('ktsln_th');
   const ktsln_kh=document.getElementById('ktsln_kh');
-  if(ktsln)ktsln.textContent=tslnTT.toFixed(1)+'%';
+  if(ktsln_pt)ktsln_pt.textContent=tslnPT_filt.toFixed(1)+'%';
+  if(ktsln_th)ktsln_th.textContent=dtTH>0?tslnTH.toFixed(1)+'%':'–';
   if(ktsln_kh)ktsln_kh.textContent='KH: '+(tslnKH!=null?tslnKH.toFixed(1)+'%':'–');
-  _kpiBadge('ktsln_badge',tslnTT,tslnKH,false);
+  _kpiBadge('ktsln_badge',tslnPT_filt,tslnKH,false);
 
   // 3. Thu hồi CN — CN cũ đã thu (J:K) từ _cnKPI, fallback cache
   const selY=parseInt(document.getElementById('fYear')?.value||2026);
