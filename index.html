@@ -256,6 +256,7 @@ tr:last-child td{border-bottom:none}
   <div class="tab" onclick="showTab('plan',this)">📊 Kế hoạch SL</div>
   <div class="tab" onclick="showTab('inv',this)">📦 Tồn Kho</div>
   <div class="tab" onclick="showTab('nvl',this)">⚗️ Kiểm soát NVL</div>
+  <div class="tab" onclick="showTab('stq',this)">🏪 Tra Cứu CH</div>
 </div>
 
 <div class="main">
@@ -1432,6 +1433,144 @@ tr:last-child td{border-bottom:none}
         <tbody id="nvlTbody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- Tab Tra Cứu Cửa Hàng -->
+<div class="page" id="page-stq">
+  <div style="padding:12px 20px">
+
+    <!-- Filter card -->
+    <div class="cc" style="margin-bottom:14px">
+      <div class="ch" style="padding:10px 16px">
+        <div><div class="ctitle">🔍 Tra cứu theo Cửa hàng</div><div class="csub">Lọc doanh thu, lợi nhuận và hàng hóa theo từng cửa hàng</div></div>
+      </div>
+      <div style="padding:12px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+
+        <!-- Filter type -->
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <label style="font-size:11px;font-weight:700;color:#666">Lọc theo</label>
+          <select id="stqFilterType" onchange="stqToggleFilter()" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+            <option value="range">Khoảng ngày</option>
+            <option value="month">Tháng</option>
+            <option value="year">Năm</option>
+          </select>
+        </div>
+
+        <!-- Date range -->
+        <div id="stqDateWrap" style="display:flex;gap:8px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <label style="font-size:11px;font-weight:700;color:#666">Từ ngày</label>
+            <input type="date" id="stqFrom" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <label style="font-size:11px;font-weight:700;color:#666">Đến ngày</label>
+            <input type="date" id="stqTo" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+          </div>
+        </div>
+
+        <!-- Month filter -->
+        <div id="stqMonthWrap" style="display:none;gap:8px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <label style="font-size:11px;font-weight:700;color:#666">Tháng</label>
+            <select id="stqMonth" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+              <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option>
+              <option value="4">Tháng 4</option><option value="5">Tháng 5</option><option value="6">Tháng 6</option>
+              <option value="7">Tháng 7</option><option value="8">Tháng 8</option><option value="9">Tháng 9</option>
+              <option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <label style="font-size:11px;font-weight:700;color:#666">Năm</label>
+            <select id="stqMonthYear" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+              <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Year filter -->
+        <div id="stqYearWrap" style="display:none;flex-direction:column;gap:3px">
+          <label style="font-size:11px;font-weight:700;color:#666">Năm</label>
+          <select id="stqYear" style="border:1px solid var(--bdr);border-radius:6px;padding:6px 10px;font-size:12px">
+            <option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option>
+          </select>
+        </div>
+
+        <!-- Store multi-select -->
+        <div style="display:flex;flex-direction:column;gap:3px;position:relative">
+          <label style="font-size:11px;font-weight:700;color:#666">Cửa hàng</label>
+          <div style="position:relative">
+            <button id="stqStoreTrigger" onclick="stqToggleStoreMenu(event)"
+              style="border:1px solid var(--bdr);border-radius:6px;padding:6px 28px 6px 10px;font-size:12px;background:#fff;cursor:pointer;min-width:200px;text-align:left;position:relative">
+              <span id="stqStoreLabel">Tất cả cửa hàng</span>
+              <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#888">▼</span>
+            </button>
+            <div id="stqStoreMenu" style="display:none;position:absolute;top:100%;left:0;min-width:240px;background:#fff;border:1px solid var(--bdr);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:500;max-height:280px;overflow-y:auto;padding:6px 0">
+              <div style="padding:6px 12px;border-bottom:1px solid var(--bdr);display:flex;gap:8px">
+                <button onclick="stqSelectAll(true)" style="font-size:11px;border:1px solid var(--g);border-radius:4px;padding:2px 8px;background:#f0fff4;color:var(--g);cursor:pointer">Chọn tất</button>
+                <button onclick="stqSelectAll(false)" style="font-size:11px;border:1px solid #e2e8f0;border-radius:4px;padding:2px 8px;background:#f8fafc;color:#666;cursor:pointer">Bỏ chọn</button>
+              </div>
+              <div id="stqStoreList" style="padding:4px 0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search button -->
+        <button onclick="renderStqPage()"
+          style="background:var(--g);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;align-self:flex-end">
+          🔍 Xem kết quả
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI row -->
+    <div id="stqKPI" style="display:none;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:#f0fff4;border:1px solid #b7dfc8;border-left:4px solid var(--g);border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#1a6b3c;margin-bottom:4px">Tổng Doanh thu</div>
+        <div style="font-size:22px;font-weight:800;color:#1a6b3c" id="stqTotalDT">–</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="stqTotalDTSub">–</div>
+      </div>
+      <div style="background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:4px">Tổng Lợi nhuận</div>
+        <div style="font-size:22px;font-weight:800;color:#2b6cb0" id="stqTotalLN">–</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="stqTotalLNSub">–</div>
+      </div>
+      <div style="background:#faf5ff;border:1px solid #e9d8fd;border-left:4px solid #805ad5;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#553c9a;margin-bottom:4px">Số cửa hàng</div>
+        <div style="font-size:22px;font-weight:800;color:#553c9a" id="stqStoreCnt">–</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="stqStoreCntSub">–</div>
+      </div>
+      <div style="background:#fffbeb;border:1px solid #fbd38d;border-left:4px solid #d69e2e;border-radius:10px;padding:12px 16px">
+        <div style="font-size:11px;font-weight:700;color:#7a5800;margin-bottom:4px">Số mặt hàng</div>
+        <div style="font-size:22px;font-weight:800;color:#7a5800" id="stqItemCnt">–</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="stqItemCntSub">–</div>
+      </div>
+    </div>
+
+    <!-- Products table -->
+    <div class="cc" id="stqTableCard" style="display:none">
+      <div class="ch" style="padding:10px 16px">
+        <div><div class="ctitle" id="stqTableTitle">Danh sách hàng hóa nhận</div><div class="csub" id="stqTableSub">–</div></div>
+        <button onclick="stqExport()" style="background:#f0fff4;color:var(--g);border:1px solid #b7dfc8;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">📥 Xuất Excel</button>
+      </div>
+      <!-- Toggle view -->
+      <div style="padding:8px 16px;border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;font-weight:700;color:#555">Xem theo:</span>
+        <button id="stqViewProd" onclick="stqSetView('product')" class="tb" style="background:var(--g);color:#fff">📦 Sản phẩm</button>
+        <button id="stqViewStore" onclick="stqSetView('store')" class="tb">🏪 Cửa hàng</button>
+      </div>
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+        <table class="store-detail-table">
+          <thead id="stqThead"></thead>
+          <tbody id="stqTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="stqEmpty" style="text-align:center;padding:40px;color:#a0aec0;font-size:13px">
+      ← Chọn bộ lọc và nhấn <b>Xem kết quả</b>
+    </div>
+
   </div>
 </div>
 
@@ -4521,6 +4660,7 @@ function showTab(name,el){
   }
   if(name==='inv') initInvTab();
   if(name==='nvl') initNVLTab();
+  if(name==='stq'){stqInit();stqToggleFilter();}
 }
 
 var _activeCmpSub='cmp';
@@ -6783,6 +6923,269 @@ function nvlExportExcel(){
 applyF();
 fetchSalesFromSheet().then(()=>{fetchKPIFromSheet();fetchCNFromSheet();initCmpFilter();initYoYFilters();});
 
+// ── Tab Tra Cứu Cửa Hàng ────────────────────────────────────────────
+let _stqView='product'; // 'product' | 'store'
+let _stqRows=[];        // filtered D_ALL rows
+
+function stqInit(){
+  // Populate store checkboxes from D_ALL
+  const list=document.getElementById('stqStoreList');
+  if(!list)return;
+  const stores=[...new Set((D_ALL||[]).map(r=>r.chiNhanh).filter(Boolean))].sort();
+  list.innerHTML=stores.map(s=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 14px;cursor:pointer;font-size:12px;hover:background:#f8fafc">
+      <input type="checkbox" class="stq-chk" value="${s}" checked style="accent-color:var(--g)"> ${s}
+    </label>`).join('');
+  // Init date defaults: current month
+  const now=new Date();
+  const y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,'0');
+  const from=document.getElementById('stqFrom');
+  const to=document.getElementById('stqTo');
+  const mSel=document.getElementById('stqMonth');
+  const mySel=document.getElementById('stqMonthYear');
+  if(from&&!from.value) from.value=`${y}-${m}-01`;
+  if(to&&!to.value){const last=new Date(y,now.getMonth()+1,0);to.value=`${y}-${m}-${String(last.getDate()).padStart(2,'0')}`;}
+  if(mSel) mSel.value=String(now.getMonth()+1);
+  if(mySel) mySel.value=String(y);
+  // Close menu on outside click
+  document.addEventListener('click',e=>{
+    const menu=document.getElementById('stqStoreMenu');
+    if(menu&&!menu.contains(e.target)&&e.target.id!=='stqStoreTrigger'&&!document.getElementById('stqStoreTrigger')?.contains(e.target)){
+      menu.style.display='none';
+    }
+  });
+}
+
+function stqToggleFilter(){
+  const v=document.getElementById('stqFilterType')?.value;
+  const dw=document.getElementById('stqDateWrap');
+  const mw=document.getElementById('stqMonthWrap');
+  const yw=document.getElementById('stqYearWrap');
+  if(dw) dw.style.display=v==='range'?'flex':'none';
+  if(mw) mw.style.display=v==='month'?'flex':'none';
+  if(yw) yw.style.display=v==='year'?'flex':'none';
+}
+
+function stqToggleStoreMenu(e){
+  e&&e.stopPropagation();
+  const m=document.getElementById('stqStoreMenu');
+  if(m) m.style.display=m.style.display==='none'?'block':'none';
+}
+
+function stqSelectAll(val){
+  document.querySelectorAll('.stq-chk').forEach(c=>c.checked=val);
+  stqUpdateLabel();
+}
+
+function stqUpdateLabel(){
+  const all=[...document.querySelectorAll('.stq-chk')];
+  const sel=all.filter(c=>c.checked);
+  const lbl=document.getElementById('stqStoreLabel');
+  if(!lbl)return;
+  if(sel.length===0) lbl.textContent='Chưa chọn cửa hàng';
+  else if(sel.length===all.length) lbl.textContent='Tất cả cửa hàng';
+  else if(sel.length<=2) lbl.textContent=sel.map(c=>c.value).join(', ');
+  else lbl.textContent=`${sel.length} cửa hàng`;
+}
+
+function stqGetSelectedStores(){
+  return [...document.querySelectorAll('.stq-chk:checked')].map(c=>c.value);
+}
+
+function stqFilterRows(){
+  const type=document.getElementById('stqFilterType')?.value||'range';
+  const stores=stqGetSelectedStores();
+  let rows=D_ALL.filter(r=>stores.includes(r.chiNhanh));
+  if(type==='range'){
+    const from=document.getElementById('stqFrom')?.value;
+    const to=document.getElementById('stqTo')?.value;
+    if(from) rows=rows.filter(r=>r.ngay>=from);
+    if(to)   rows=rows.filter(r=>r.ngay<=to);
+  } else if(type==='month'){
+    const m=parseInt(document.getElementById('stqMonth')?.value||0);
+    const y=parseInt(document.getElementById('stqMonthYear')?.value||0);
+    if(m) rows=rows.filter(r=>r.thang===m);
+    if(y) rows=rows.filter(r=>r.nam===y);
+  } else if(type==='year'){
+    const y=parseInt(document.getElementById('stqYear')?.value||0);
+    if(y) rows=rows.filter(r=>r.nam===y);
+  }
+  return rows;
+}
+
+function stqSetView(v){
+  _stqView=v;
+  document.getElementById('stqViewProd').style.background=v==='product'?'var(--g)':'';
+  document.getElementById('stqViewProd').style.color=v==='product'?'#fff':'';
+  document.getElementById('stqViewStore').style.background=v==='store'?'var(--g)':'';
+  document.getElementById('stqViewStore').style.color=v==='store'?'#fff':'';
+  stqRenderTable(_stqRows);
+}
+
+function renderStqPage(){
+  stqUpdateLabel();
+  const rows=stqFilterRows();
+  _stqRows=rows;
+
+  const empty=document.getElementById('stqEmpty');
+  const kpi=document.getElementById('stqKPI');
+  const card=document.getElementById('stqTableCard');
+
+  if(!rows.length){
+    empty.style.display='block';
+    empty.textContent='Không có dữ liệu trong khoảng thời gian đã chọn.';
+    kpi.style.display='none';
+    card.style.display='none';
+    return;
+  }
+  empty.style.display='none';
+  kpi.style.display='grid';
+  card.style.display='block';
+
+  // KPI
+  const totalDT=rows.reduce((s,r)=>s+(r.thanhTien||0),0);
+  const totalLN=rows.reduce((s,r)=>s+(r.lnThuc||0),0);
+  const storeCnt=new Set(rows.map(r=>r.chiNhanh)).size;
+  const itemCnt=new Set(rows.map(r=>r.maHang)).size;
+  const tsln=totalDT>0?(totalLN/totalDT*100).toFixed(1)+'%':'–';
+
+  document.getElementById('stqTotalDT').textContent=fmt(totalDT);
+  document.getElementById('stqTotalDTSub').textContent='đồng';
+  document.getElementById('stqTotalLN').textContent=fmt(totalLN);
+  document.getElementById('stqTotalLNSub').textContent='TSLN: '+tsln;
+  document.getElementById('stqStoreCnt').textContent=storeCnt;
+  document.getElementById('stqStoreCntSub').textContent='đang lọc';
+  document.getElementById('stqItemCnt').textContent=itemCnt;
+  document.getElementById('stqItemCntSub').textContent='loại SP';
+
+  // Table label
+  const type=document.getElementById('stqFilterType')?.value;
+  let periodLabel='';
+  if(type==='range'){
+    const f=document.getElementById('stqFrom')?.value,t=document.getElementById('stqTo')?.value;
+    periodLabel=`${f||'?'} → ${t||'?'}`;
+  } else if(type==='month'){
+    const m=document.getElementById('stqMonth')?.value,y=document.getElementById('stqMonthYear')?.value;
+    periodLabel=`T${m}/${y}`;
+  } else {
+    periodLabel=document.getElementById('stqYear')?.value||'–';
+  }
+  document.getElementById('stqTableTitle').textContent='Danh sách hàng hóa nhận';
+  document.getElementById('stqTableSub').textContent=`${periodLabel} · ${rows.length} dòng · ${storeCnt} cửa hàng`;
+
+  stqRenderTable(rows);
+}
+
+function stqRenderTable(rows){
+  const thead=document.getElementById('stqThead');
+  const tbody=document.getElementById('stqTbody');
+  if(!thead||!tbody)return;
+
+  if(_stqView==='product'){
+    // Group by product
+    const gr={};
+    rows.forEach(r=>{
+      const k=r.maHang||'–';
+      if(!gr[k]){gr[k]={maHang:k,tenHang:r.sanPham||k,loaiHang:r.loaiHang||'–',sl:0,dt:0,ln:0,stores:new Set()};}
+      gr[k].sl+=(r.sl||0);
+      gr[k].dt+=(r.thanhTien||0);
+      gr[k].ln+=(r.lnThuc||0);
+      gr[k].stores.add(r.chiNhanh);
+    });
+    const list=Object.values(gr).sort((a,b)=>b.dt-a.dt);
+    const totDT=list.reduce((s,r)=>s+r.dt,0);
+
+    thead.innerHTML=`<tr>
+      <th class="left" style="width:32px">STT</th>
+      <th class="left">Mã hàng</th>
+      <th class="left">Tên sản phẩm</th>
+      <th class="left">Loại hàng</th>
+      <th>SL</th>
+      <th>Doanh thu</th>
+      <th>Lợi nhuận</th>
+      <th>TSLN</th>
+      <th>% DT</th>
+      <th>Số CH</th>
+    </tr>`;
+    tbody.innerHTML=list.map((p,i)=>{
+      const tsln=p.dt>0?(p.ln/p.dt*100).toFixed(1)+'%':'–';
+      const pctDT=totDT>0?(p.dt/totDT*100).toFixed(1)+'%':'–';
+      return `<tr>
+        <td style="text-align:center;color:#888">${i+1}</td>
+        <td style="font-family:monospace;font-size:11px;color:#666">${p.maHang}</td>
+        <td style="text-align:left;font-weight:600">${p.tenHang}</td>
+        <td style="text-align:left;color:#666">${p.loaiHang}</td>
+        <td>${fmt(p.sl)}</td>
+        <td style="color:#1a6b3c;font-weight:600">${fmt(p.dt)}</td>
+        <td style="color:#2b6cb0;font-weight:600">${fmt(p.ln)}</td>
+        <td style="color:${p.dt>0&&p.ln/p.dt>=0.25?'#1a6b3c':'#c53030'}">${tsln}</td>
+        <td style="color:#7a5800">${pctDT}</td>
+        <td style="text-align:center">${p.stores.size}</td>
+      </tr>`;
+    }).join('') + `<tr style="background:#f0f7f0;font-weight:700;border-top:2px solid var(--g)">
+      <td colspan="4" style="text-align:right;color:var(--g)">TỔNG</td>
+      <td>${fmt(list.reduce((s,p)=>s+p.sl,0))}</td>
+      <td style="color:#1a6b3c">${fmt(list.reduce((s,p)=>s+p.dt,0))}</td>
+      <td style="color:#2b6cb0">${fmt(list.reduce((s,p)=>s+p.ln,0))}</td>
+      <td colspan="3"></td>
+    </tr>`;
+
+  } else {
+    // Group by store
+    const gr={};
+    rows.forEach(r=>{
+      const k=r.chiNhanh||'–';
+      if(!gr[k]){gr[k]={store:k,items:new Set(),sl:0,dt:0,ln:0};}
+      gr[k].sl+=(r.sl||0);
+      gr[k].dt+=(r.thanhTien||0);
+      gr[k].ln+=(r.lnThuc||0);
+      gr[k].items.add(r.maHang);
+    });
+    const list=Object.values(gr).sort((a,b)=>b.dt-a.dt);
+
+    thead.innerHTML=`<tr>
+      <th class="left" style="width:32px">STT</th>
+      <th class="left">Cửa hàng</th>
+      <th>Số mặt hàng</th>
+      <th>SL nhận</th>
+      <th>Doanh thu</th>
+      <th>Lợi nhuận</th>
+      <th>TSLN</th>
+    </tr>`;
+    tbody.innerHTML=list.map((p,i)=>{
+      const tsln=p.dt>0?(p.ln/p.dt*100).toFixed(1)+'%':'–';
+      return `<tr>
+        <td style="text-align:center;color:#888">${i+1}</td>
+        <td style="text-align:left;font-weight:600">${p.store}</td>
+        <td>${p.items.size}</td>
+        <td>${fmt(p.sl)}</td>
+        <td style="color:#1a6b3c;font-weight:600">${fmt(p.dt)}</td>
+        <td style="color:#2b6cb0;font-weight:600">${fmt(p.ln)}</td>
+        <td style="color:${p.dt>0&&p.ln/p.dt>=0.25?'#1a6b3c':'#c53030'}">${tsln}</td>
+      </tr>`;
+    }).join('') + `<tr style="background:#f0f7f0;font-weight:700;border-top:2px solid var(--g)">
+      <td colspan="3" style="text-align:right;color:var(--g)">TỔNG</td>
+      <td>${fmt(list.reduce((s,p)=>s+p.sl,0))}</td>
+      <td style="color:#1a6b3c">${fmt(list.reduce((s,p)=>s+p.dt,0))}</td>
+      <td style="color:#2b6cb0">${fmt(list.reduce((s,p)=>s+p.ln,0))}</td>
+      <td></td>
+    </tr>`;
+  }
+}
+
+function stqExport(){
+  if(!_stqRows.length){alert('Không có dữ liệu để xuất.');return;}
+  // Simple CSV export
+  const headers=['Mã hàng','Tên sản phẩm','Loại hàng','Cửa hàng','Ngày','Tháng','Năm','SL','Doanh thu','Giá vốn','Lợi nhuận'];
+  const csv=[headers.join(','),..._stqRows.map(r=>[
+    r.maHang||'',r.sanPham||'',r.loaiHang||'',r.chiNhanh||'',
+    r.ngay||'',r.thang||'',r.nam||'',
+    r.sl||0,r.thanhTien||0,r.tongGiaVon||0,r.lnThuc||0
+  ].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))].join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='tracuu_cuahang.csv';a.click();
+}
 </script>
 </body>
 </html>
