@@ -7082,7 +7082,14 @@ function stqRenderTable(rows){
   if(!thead||!tbody)return;
 
   if(_stqView==='product'){
-    // Build catalog name lookup: exact maHang + base code (strip suffix after '.')
+    // 1. Build name map từ D_ALL: lấy sanPham tốt nhất (dài nhất, khác maHang) cho mỗi mã
+    const spMap={};
+    (D_ALL||[]).forEach(r=>{
+      if(!r.maHang||!r.sanPham||r.sanPham===r.maHang) return;
+      const prev=spMap[r.maHang]||'';
+      if(r.sanPham.length>prev.length) spMap[r.maHang]=r.sanPham;
+    });
+    // 2. Build catalog lookup: exact + base code (NVL010227.26.03 → NVL010227)
     const catMap={};
     (CATALOG||[]).forEach(c=>{
       if(!c.maHang)return;
@@ -7094,10 +7101,9 @@ function stqRenderTable(rows){
     const gr={};
     rows.forEach(r=>{
       const k=r.maHang||'–';
-      const base=(k).split('.')[0].toUpperCase();
+      const base=k.split('.')[0].toUpperCase();
       const sp=r.sanPham||'';
-      // Use catalog first; fall back to sanPham only if it looks like a real name (has spaces or differs from maHang)
-      const tenHang=catMap[k]||catMap[base]||(sp&&sp!==k&&/\s/.test(sp)?sp:null)||sp||k;
+      const tenHang=catMap[k]||catMap[base]||spMap[k]||(sp&&sp!==k?sp:null)||k;
       if(!gr[k]){gr[k]={maHang:k,tenHang,loaiHang:r.loaiHang||'–',sl:0,dt:0,ln:0,stores:new Set()};}
       gr[k].sl+=(r.sl||0);
       gr[k].dt+=(r.thanhTien||0);
