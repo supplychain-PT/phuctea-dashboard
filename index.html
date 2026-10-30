@@ -7082,11 +7082,15 @@ function stqRenderTable(rows){
   if(!thead||!tbody)return;
 
   if(_stqView==='product'){
+    // Build catalog name lookup
+    const catMap={};
+    (CATALOG||[]).forEach(c=>{if(c.maHang)catMap[c.maHang]=c.tenHang;});
     // Group by product
     const gr={};
     rows.forEach(r=>{
       const k=r.maHang||'–';
-      if(!gr[k]){gr[k]={maHang:k,tenHang:r.sanPham||k,loaiHang:r.loaiHang||'–',sl:0,dt:0,ln:0,stores:new Set()};}
+      const tenHang=catMap[k]||r.sanPham||k;
+      if(!gr[k]){gr[k]={maHang:k,tenHang,loaiHang:r.loaiHang||'–',sl:0,dt:0,ln:0,stores:new Set()};}
       gr[k].sl+=(r.sl||0);
       gr[k].dt+=(r.thanhTien||0);
       gr[k].ln+=(r.lnThuc||0);
