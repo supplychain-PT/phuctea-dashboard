@@ -284,34 +284,81 @@ tr:last-child td{border-bottom:none}
 
   <!-- KPI TT/KH theo tháng -->
   <div id="ovKPIComp" style="display:none;margin-bottom:14px">
-    <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:8px;letter-spacing:.3px">📊 KPI THÁNG — THỰC TẾ VS KẾ HOẠCH</div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:190px;background:#f0f7f2;border:1px solid #b7dfc8;border-left:4px solid #1a6b3c;border-radius:10px;padding:12px 16px">
-        <div style="font-size:11px;font-weight:700;color:#1a6b3c;margin-bottom:4px">Tỷ lệ DT BH / DT HT</div>
-        <div style="display:flex;align-items:baseline;gap:6px">
-          <span style="font-size:24px;font-weight:800;color:#1a6b3c" id="ktl_tt">–</span>
-          <span style="font-size:10px;color:#888">thực tế</span>
-        </div>
-        <div style="font-size:11px;color:#888;margin-top:2px" id="ktl_kh">KH: –</div>
-        <div id="ktl_badge" style="margin-top:4px;font-size:11px;font-weight:700"></div>
-        <div id="ktl_hint" style="display:none;font-size:10px;color:#a0aec0;margin-top:3px">💡 Nhập DT HT trong tab KPI</div>
-      </div>
-      <div style="flex:1;min-width:220px;background:#ebf8ff;border:1px solid #bee3f8;border-left:4px solid #3182ce;border-radius:10px;padding:12px 16px">
-        <div style="font-size:11px;font-weight:700;color:#2b6cb0;margin-bottom:8px">Tỷ suất Lợi nhuận</div>
-        <div style="display:flex;gap:10px">
-          <div style="flex:1;border-right:1px solid #bee3f8;padding-right:10px">
-            <div style="font-size:10px;font-weight:700;color:#1a6b3c;margin-bottom:2px">🍵 Phúc Tea</div>
-            <span style="font-size:20px;font-weight:800;color:#1a6b3c" id="ktsln_pt">–</span>
-            <div style="font-size:11px;color:#888;margin-top:2px" id="ktsln_kh">KH: –</div>
-            <div id="ktsln_badge" style="margin-top:2px;font-size:11px;font-weight:700"></div>
-          </div>
-          <div style="flex:1">
-            <div style="font-size:10px;font-weight:700;color:#6b21a8;margin-bottom:2px">🌸 The Hoa</div>
-            <span style="font-size:20px;font-weight:800;color:#6b21a8" id="ktsln_th">–</span>
-          </div>
-        </div>
-      </div>
-      <div style="flex:1;min-width:190px;background:#fefce8;border:1px solid #fde68a;border-left:4px solid #d69e2e;border-radius:10px;padding:12px 16px">
+    <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:10px;letter-spacing:.3px">📊 KPI THÁNG <span id="ovMonthTitle">–</span> — PHÚC TEA & THE HOA</div>
+    <div style="overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:520px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:9px 14px;text-align:left;font-weight:600;border-bottom:2px solid #e2e8f0;color:#555;min-width:150px"></th>
+            <th style="padding:9px 14px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;color:#1a6b3c">🍵 PHÚC TEA</th>
+            <th style="padding:9px 14px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;color:#6b21a8">🌸 THE HOA</th>
+            <th style="padding:9px 14px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;color:#2b6cb0">TỔNG HỆ THỐNG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="background:#f0f7f2">
+            <td style="padding:8px 14px;font-weight:700;color:#333;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap">DT HỆ THỐNG</td>
+            <td style="padding:5px 14px;text-align:right;border-bottom:1px solid #e2e8f0">
+              <input id="ovDtHtPT" type="text" placeholder="Nhập số..." style="width:120px;text-align:right;border:1px solid #b7dfc8;border-radius:6px;padding:4px 8px;font-size:12px;color:#1a6b3c;background:#fff;outline:none" oninput="ovSaveAndRender()">
+            </td>
+            <td style="padding:5px 14px;text-align:right;border-bottom:1px solid #e2e8f0">
+              <input id="ovDtHtTH" type="text" placeholder="Nhập số..." style="width:120px;text-align:right;border:1px solid #d8b4fe;border-radius:6px;padding:4px 8px;font-size:12px;color:#6b21a8;background:#fff;outline:none" oninput="ovSaveAndRender()">
+            </td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:700;color:#2b6cb0;white-space:nowrap" id="ovDtHtTotal">–</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 14px;font-weight:700;color:#333;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap">DT CHUỖI CUNG ỨNG</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#1a6b3c;font-weight:600;white-space:nowrap" id="ovDtChuoiPT">–</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#6b21a8;font-weight:600;white-space:nowrap" id="ovDtChuoiTH">–</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#2b6cb0;font-weight:700;white-space:nowrap" id="ovDtChuoiTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;border-bottom:1px solid #e2e8f0;font-size:11px">↳ Tỉ lệ thực tế</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTlTTPT">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTlTTTH">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTlTTTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;border-bottom:1px solid #e2e8f0;font-size:11px">↳ Mục tiêu</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTlKhPT">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTlKhTH">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTlKhTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;border-bottom:2px solid #e2e8f0;font-size:11px">↳ Tỉ lệ đạt</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:2px solid #e2e8f0;font-weight:700;font-size:12px" id="ovTlDatPT">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:2px solid #e2e8f0;font-weight:700;font-size:12px" id="ovTlDatTH">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:2px solid #e2e8f0;font-weight:700;font-size:12px" id="ovTlDatTotal">–</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 14px;font-weight:700;color:#333;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap">LỢI NHUẬN</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#1a6b3c;font-weight:600;white-space:nowrap" id="ovLnPT">–</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#6b21a8;font-weight:600;white-space:nowrap" id="ovLnTH">–</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;color:#2b6cb0;font-weight:700;white-space:nowrap" id="ovLnTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;border-bottom:1px solid #e2e8f0;font-size:11px">↳ TSLN mục tiêu</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTslnKhPT">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTslnKhTH">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px;color:#888" id="ovTslnKhTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;border-bottom:1px solid #e2e8f0;font-size:11px">↳ TSLN thực tế</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTslnTTPT">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTslnTTTH">–</td>
+            <td style="padding:6px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-size:12px" id="ovTslnTTTotal">–</td>
+          </tr>
+          <tr style="background:#f8fafc">
+            <td style="padding:6px 14px 6px 22px;color:#666;font-size:11px">↳ Tỉ lệ đạt</td>
+            <td style="padding:6px 14px;text-align:right;font-weight:700;font-size:12px" id="ovTslnDatPT">–</td>
+            <td style="padding:6px 14px;text-align:right;font-weight:700;font-size:12px" id="ovTslnDatTH">–</td>
+            <td style="padding:6px 14px;text-align:right;font-weight:700;font-size:12px" id="ovTslnDatTotal">–</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px">
+      <div style="display:inline-block;min-width:220px;background:#fefce8;border:1px solid #fde68a;border-left:4px solid #d69e2e;border-radius:10px;padding:12px 16px">
         <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px">Thu hồi Công nợ</div>
         <div style="display:flex;align-items:baseline;gap:6px">
           <span style="font-size:24px;font-weight:800;color:#92400e" id="kcn_tt">–</span>
@@ -1994,6 +2041,17 @@ function applyCNToKPI(){
 
 setInterval(fetchCNFromSheet, 5*60*1000);
 
+function ovSaveAndRender(){
+  const _selM=parseInt(document.getElementById('fMonth')?.value||0);
+  const selY=parseInt(document.getElementById('fYear')?.value||2026);
+  if(!_selM)return;
+  const ptV=document.getElementById('ovDtHtPT')?.value||'';
+  const thV=document.getElementById('ovDtHtTH')?.value||'';
+  const ovKey=`phuctea_ov_dtHT_${selY}_${_selM}`;
+  try{localStorage.setItem(ovKey,JSON.stringify({pt:ptV,th:thV}));}catch(e){}
+  renderKPI();
+}
+
 function applyF(){
   const f=getF();
   filt=D_CY.filter(r=>{
@@ -2068,6 +2126,8 @@ function renderKPI(){
   if(!ovComp)return;
   if(!_selM){ovComp.style.display='none';return;}
   ovComp.style.display='block';
+  const ovMT=document.getElementById('ovMonthTitle');
+  if(ovMT)ovMT.textContent=MN[_selM]||('Tháng '+_selM);
 
   function _kpiBadge(elId,tt,kh,isVND){
     const el=document.getElementById(elId);if(!el)return;
@@ -2077,43 +2137,89 @@ function renderKPI(){
     const ico=r>=1?'✅':'⚠️';
     el.innerHTML=`${ico} <span style="color:${cl}">${(r*100).toFixed(1)}% vs KH</span>`;
   }
+  function _ovDat(elId,tt,md){
+    const el=document.getElementById(elId);if(!el)return;
+    if(tt==null||md==null||md===0){el.innerHTML='–';el.style.color='#888';return;}
+    const r=tt/md*100;
+    const c=r>=100?'#2d9e5f':r>=80?'#d69e2e':'#e53e3e';
+    el.innerHTML=`${r>=100?'✅':'⚠️'} <span style="color:${c}">${r.toFixed(1)}%</span>`;
+  }
+  function _parseHt(s){
+    if(!s)return null;
+    // Support VN thousand-dot format: 500.000.000 → 500000000
+    const n=parseFloat(String(s).replace(/\./g,'').replace(',','.'));
+    if(!isNaN(n)&&n>0)return n;
+    const n2=parseFloat(String(s).replace(/[^0-9.]/g,''));
+    return isNaN(n2)?null:n2;
+  }
+  const setTx=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
 
-  // 1. Tỷ lệ DT BH / DT HT
-  // Dùng _readKH để đọc từ cache + DOM (giống BOD), tính trực tiếp từ filt
-  const htTT_m=_readKH('ht_tt',_selM);
-  const dtBH_filt=D_CY.filter(r=>!isBHExcluded(r)&&r.brand==='PHÚC TEA'&&(_selM?r.thang===_selM:true)).reduce((s,r)=>s+(r.thanhTien||0),0);
-  const tlTT=htTT_m&&htTT_m>0 ? dtBH_filt/htTT_m*100 : null;
-  const tlKH=_readKH('tl_kh',_selM);
-  const ktlTT=document.getElementById('ktl_tt');
-  const ktlKH=document.getElementById('ktl_kh');
-  const ktlHint=document.getElementById('ktl_hint');
-  if(ktlTT)ktlTT.textContent=tlTT!=null?tlTT.toFixed(2)+'%':'–';
-  if(ktlKH)ktlKH.textContent='KH: '+(tlKH!=null?tlKH.toFixed(2)+'%':'–');
-  if(ktlHint)ktlHint.style.display=(tlTT==null)?'block':'none';
-  _kpiBadge('ktl_badge',tlTT,tlKH,false);
-
-  // 2. TSLN — tách Phúc Tea và The Hoa
-  const filtPT=filt.filter(r=>r.brand==='PHÚC TEA');
-  const filtTH=filt.filter(r=>r.brand==='THE HOA');
-  const dtPT=filtPT.reduce((s,r)=>s+(r.thanhTien||0),0);
-  const gvPT=filtPT.reduce((s,r)=>s+(r.tongGiaVon||0),0);
-  const dtTH=filtTH.reduce((s,r)=>s+(r.thanhTien||0),0);
-  const gvTH=filtTH.reduce((s,r)=>s+(r.tongGiaVon||0),0);
-  const tslnPT_filt=dtPT>0?(dtPT-gvPT)/dtPT*100:0;
-  const tslnTH=dtTH>0?(dtTH-gvTH)/dtTH*100:0;
-  const tslnKH=_readKH('tsln_kh',_selM);
-  const ktsln_pt=document.getElementById('ktsln_pt');
-  const ktsln_th=document.getElementById('ktsln_th');
-  const ktsln_kh=document.getElementById('ktsln_kh');
-  if(ktsln_pt)ktsln_pt.textContent=tslnPT_filt.toFixed(1)+'%';
-  if(ktsln_th)ktsln_th.textContent=dtTH>0?tslnTH.toFixed(1)+'%':'–';
-  if(ktsln_kh)ktsln_kh.textContent='KH: '+(tslnKH!=null?tslnKH.toFixed(1)+'%':'–');
-  _kpiBadge('ktsln_badge',tslnPT_filt,tslnKH,false);
-
-  // 3. Thu hồi CN — CN cũ đã thu (J:K) từ _cnKPI, fallback cache
+  // Load saved DT HT from localStorage (per month)
   const selY=parseInt(document.getElementById('fYear')?.value||2026);
+  const ovKey=`phuctea_ov_dtHT_${selY}_${_selM}`;
+  let ovSaved={};
+  try{ovSaved=JSON.parse(localStorage.getItem(ovKey)||'{}');}catch(e){}
+  const ptInput=document.getElementById('ovDtHtPT');
+  const thInput=document.getElementById('ovDtHtTH');
+  // Only restore from storage when month changes (don't overwrite active typing)
+  if(ptInput&&ptInput.dataset.loadedMonth!==String(_selM)){ptInput.value=ovSaved.pt||'';ptInput.dataset.loadedMonth=String(_selM);}
+  if(thInput&&thInput.dataset.loadedMonth!==String(_selM)){thInput.value=ovSaved.th||'';thInput.dataset.loadedMonth=String(_selM);}
+
+  const dtHtPT=_parseHt(ptInput?.value);
+  const dtHtTH=_parseHt(thInput?.value);
+  const dtHtTot=(dtHtPT!=null||dtHtTH!=null)?((dtHtPT||0)+(dtHtTH||0)):null;
+  setTx('ovDtHtTotal',dtHtTot!=null?fmtB(dtHtTot):'–');
+
+  // DT Chuỗi Cung Ứng from D_CY (direct month filter, independent of filt brand/store filters)
+  const mRows=D_CY.filter(r=>r.thang===_selM);
+  const dtBH_pt=mRows.filter(r=>r.brand==='PHÚC TEA'&&!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
+  const dtBH_th=mRows.filter(r=>r.brand==='THE HOA'&&!isBHExcluded(r)).reduce((s,r)=>s+(r.thanhTien||0),0);
+  setTx('ovDtChuoiPT',dtBH_pt>0?fmtB(dtBH_pt):'–');
+  setTx('ovDtChuoiTH',dtBH_th>0?fmtB(dtBH_th):'–');
+  setTx('ovDtChuoiTotal',fmtB(dtBH_pt+dtBH_th));
+
+  // Tỉ lệ = DT Chuỗi / DT HT
+  const tlTT_pt=dtHtPT&&dtHtPT>0?dtBH_pt/dtHtPT*100:null;
+  const tlTT_th=dtHtTH&&dtHtTH>0?dtBH_th/dtHtTH*100:null;
+  const tlTT_tot=(tlTT_pt!=null&&tlTT_th!=null)?(tlTT_pt+tlTT_th)/2:null;
+  const tlKH=_readKH('tl_kh',_selM);
+  setTx('ovTlTTPT',tlTT_pt!=null?tlTT_pt.toFixed(2)+'%':'–');
+  setTx('ovTlTTTH',tlTT_th!=null?tlTT_th.toFixed(2)+'%':'–');
+  setTx('ovTlTTTotal',tlTT_tot!=null?tlTT_tot.toFixed(2)+'%':'–');
+  setTx('ovTlKhPT',tlKH!=null?tlKH.toFixed(2)+'%':'–');
+  setTx('ovTlKhTH',tlKH!=null?tlKH.toFixed(2)+'%':'–');
+  setTx('ovTlKhTotal',tlKH!=null?tlKH.toFixed(2)+'%':'–');
+  _ovDat('ovTlDatPT',tlTT_pt,tlKH);
+  _ovDat('ovTlDatTH',tlTT_th,tlKH);
+  _ovDat('ovTlDatTotal',tlTT_tot,tlKH);
+
+  // Lợi nhuận
+  const ln_pt=mRows.filter(r=>r.brand==='PHÚC TEA').reduce((s,r)=>s+(r.lnThuc||0),0);
+  const ln_th=mRows.filter(r=>r.brand==='THE HOA').reduce((s,r)=>s+(r.lnThuc||0),0);
+  setTx('ovLnPT',ln_pt?fmtB(ln_pt):'–');
+  setTx('ovLnTH',ln_th?fmtB(ln_th):'–');
+  setTx('ovLnTotal',fmtB(ln_pt+ln_th));
+
+  // TSLN = LN / DT Chuỗi; TH target mặc định 23%
+  const tslnKH_pt=_readKH('tsln_kh',_selM);
+  const tslnKH_th=23;
+  const tslnKH_tot=tslnKH_pt!=null?(tslnKH_pt+tslnKH_th)/2:null;
+  const tsln_pt=dtBH_pt>0?ln_pt/dtBH_pt*100:null;
+  const tsln_th=dtBH_th>0?ln_th/dtBH_th*100:null;
+  const tsln_tot=(tsln_pt!=null&&tsln_th!=null)?(tsln_pt+tsln_th)/2:null;
+  setTx('ovTslnKhPT',tslnKH_pt!=null?tslnKH_pt.toFixed(1)+'%':'–');
+  setTx('ovTslnKhTH',tslnKH_th.toFixed(1)+'%');
+  setTx('ovTslnKhTotal',tslnKH_tot!=null?tslnKH_tot.toFixed(1)+'%':'–');
+  setTx('ovTslnTTPT',tsln_pt!=null?tsln_pt.toFixed(1)+'%':'–');
+  setTx('ovTslnTTTH',tsln_th!=null?tsln_th.toFixed(1)+'%':'–');
+  setTx('ovTslnTTTotal',tsln_tot!=null?tsln_tot.toFixed(1)+'%':'–');
+  _ovDat('ovTslnDatPT',tsln_pt,tslnKH_pt);
+  _ovDat('ovTslnDatTH',tsln_th,tslnKH_th);
+  _ovDat('ovTslnDatTotal',tsln_tot,tslnKH_tot);
+
+  // Thu hồi CN
   const cnTT_raw=_kpiCache['cn_tt_raw_'+_selM];
-  const cnTT=(cnTT_raw!==undefined&&cnTT_raw!==null) ? cnTT_raw : (_cnKPI[selY+'-'+_selM]||null);
+  const cnTT=(cnTT_raw!==undefined&&cnTT_raw!==null)?cnTT_raw:(_cnKPI[selY+'-'+_selM]||null);
   const cnKH=_readKH('cn_kh',_selM);
   const kcnTT=document.getElementById('kcn_tt');
   const kcnKH=document.getElementById('kcn_kh');
