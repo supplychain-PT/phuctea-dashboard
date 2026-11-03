@@ -297,13 +297,9 @@ tr:last-child td{border-bottom:none}
         </thead>
         <tbody>
           <tr style="background:#f0f7f2">
-            <td style="padding:8px 14px;font-weight:700;color:#333;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap">DT HỆ THỐNG</td>
-            <td style="padding:5px 14px;text-align:right;border-bottom:1px solid #e2e8f0">
-              <input id="ovDtHtPT" type="text" placeholder="Nhập số..." style="width:120px;text-align:right;border:1px solid #b7dfc8;border-radius:6px;padding:4px 8px;font-size:12px;color:#1a6b3c;background:#fff;outline:none" oninput="ovSaveAndRender()">
-            </td>
-            <td style="padding:5px 14px;text-align:right;border-bottom:1px solid #e2e8f0">
-              <input id="ovDtHtTH" type="text" placeholder="Nhập số..." style="width:120px;text-align:right;border:1px solid #d8b4fe;border-radius:6px;padding:4px 8px;font-size:12px;color:#6b21a8;background:#fff;outline:none" oninput="ovSaveAndRender()">
-            </td>
+            <td style="padding:8px 14px;font-weight:700;color:#333;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap">DT HỆ THỐNG<div style="font-size:9px;color:#3182ce;font-weight:400;margin-top:2px">🔗 Google Sheet</div></td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:600;color:#1a6b3c;white-space:nowrap" id="ovDtHtPT">–</td>
+            <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:600;color:#6b21a8;white-space:nowrap" id="ovDtHtTH">–</td>
             <td style="padding:8px 14px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:700;color:#2b6cb0;white-space:nowrap" id="ovDtHtTotal">–</td>
           </tr>
           <tr>
@@ -2041,16 +2037,27 @@ function applyCNToKPI(){
 
 setInterval(fetchCNFromSheet, 5*60*1000);
 
-function ovSaveAndRender(){
-  const _selM=parseInt(document.getElementById('fMonth')?.value||0);
-  const selY=parseInt(document.getElementById('fYear')?.value||2026);
-  if(!_selM)return;
-  const ptV=document.getElementById('ovDtHtPT')?.value||'';
-  const thV=document.getElementById('ovDtHtTH')?.value||'';
-  const ovKey=`phuctea_ov_dtHT_${selY}_${_selM}`;
-  try{localStorage.setItem(ovKey,JSON.stringify({pt:ptV,th:thV}));}catch(e){}
-  renderKPI();
+async function fetchMucTieu2026(){
+  const GID='1239197821';
+  const url=`https://docs.google.com/spreadsheets/d/1DR4q16Whx7QFlw3KIPbtR-6RpbDpwQ1MeOyT3faHnu4/export?format=csv&gid=${GID}`;
+  try{
+    const resp=await fetch(url);if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    const rows=parseSheetCSV(text);
+    // PHÚC TEA: row có "Kết quả" mà không phải The Hoa, không phải Bán hàng/Tỷ lệ
+    const R_PT=rows.find(r=>r[0]&&r[0].includes('Kết quả')&&!r[0].toLowerCase().includes('the hoa')&&!r[0].includes('Bán hàng')&&!r[0].includes('Tỷ lệ'))||[];
+    // THE HOA: row có "The Hoa"
+    const R_TH=rows.find(r=>r[0]&&r[0].toLowerCase().includes('the hoa'))||[];
+    for(let m=1;m<=12;m++){
+      const ci=m+1;
+      if(R_PT[ci]!==undefined){const v=parseViNum(R_PT[ci]);if(v!==null&&v>0)_kpiCache['dt_ht_pt_'+m]=v;}
+      if(R_TH[ci]!==undefined){const v=parseViNum(R_TH[ci]);if(v!==null&&v>0)_kpiCache['dt_ht_th_'+m]=v;}
+    }
+    if(document.getElementById('page-ov')?.classList.contains('on'))renderKPI();
+    console.info('[MucTieu2026] PT T1=',_kpiCache['dt_ht_pt_1'],' TH T1=',_kpiCache['dt_ht_th_1']);
+  }catch(e){console.warn('fetchMucTieu2026:',e.message);}
 }
+setInterval(fetchMucTieu2026,5*60*1000);
 
 function applyF(){
   const f=getF();
@@ -2154,19 +2161,18 @@ function renderKPI(){
   }
   const setTx=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
 
-  // Load saved DT HT from localStorage (per month)
+  // DT HT từ sheet (cache); fallback localStorage nếu chưa fetch được
   const selY=parseInt(document.getElementById('fYear')?.value||2026);
-  const ovKey=`phuctea_ov_dtHT_${selY}_${_selM}`;
-  let ovSaved={};
-  try{ovSaved=JSON.parse(localStorage.getItem(ovKey)||'{}');}catch(e){}
-  const ptInput=document.getElementById('ovDtHtPT');
-  const thInput=document.getElementById('ovDtHtTH');
-  // Only restore from storage when month changes (don't overwrite active typing)
-  if(ptInput&&ptInput.dataset.loadedMonth!==String(_selM)){ptInput.value=ovSaved.pt||'';ptInput.dataset.loadedMonth=String(_selM);}
-  if(thInput&&thInput.dataset.loadedMonth!==String(_selM)){thInput.value=ovSaved.th||'';thInput.dataset.loadedMonth=String(_selM);}
-
-  const dtHtPT=_parseHt(ptInput?.value);
-  const dtHtTH=_parseHt(thInput?.value);
+  let dtHtPT=_kpiCache['dt_ht_pt_'+_selM]||null;
+  let dtHtTH=_kpiCache['dt_ht_th_'+_selM]||null;
+  if(dtHtPT===null||dtHtTH===null){
+    const ovKey=`phuctea_ov_dtHT_${selY}_${_selM}`;
+    let ovSaved={};try{ovSaved=JSON.parse(localStorage.getItem(ovKey)||'{}');}catch(e){}
+    if(dtHtPT===null){const n=_parseHt(ovSaved.pt);if(n)dtHtPT=n;}
+    if(dtHtTH===null){const n=_parseHt(ovSaved.th);if(n)dtHtTH=n;}
+  }
+  setTx('ovDtHtPT',dtHtPT!=null?fmtB(dtHtPT):'–');
+  setTx('ovDtHtTH',dtHtTH!=null?fmtB(dtHtTH):'–');
   const dtHtTot=(dtHtPT!=null||dtHtTH!=null)?((dtHtPT||0)+(dtHtTH||0)):null;
   setTx('ovDtHtTotal',dtHtTot!=null?fmtB(dtHtTot):'–');
 
@@ -7034,7 +7040,7 @@ function nvlExportExcel(){
 
 // ===== KHỞI TẠO RENDER =====
 applyF();
-fetchSalesFromSheet().then(()=>{fetchKPIFromSheet();fetchCNFromSheet();initCmpFilter();initYoYFilters();});
+fetchSalesFromSheet().then(()=>{fetchKPIFromSheet();fetchCNFromSheet();fetchMucTieu2026();initCmpFilter();initYoYFilters();});
 
 // ── Tab Tra Cứu Cửa Hàng ────────────────────────────────────────────
 let _stqView='product'; // 'product' | 'store'
