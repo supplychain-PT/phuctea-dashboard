@@ -2061,8 +2061,8 @@ async function fetchMucTieu2026(){
     const rows=parseSheetCSV(text);
     // PHÚC TEA: row có "Kết quả" mà không phải The Hoa, không phải Bán hàng/Tỷ lệ
     const R_PT=rows.find(r=>r[0]&&r[0].includes('Kết quả')&&!r[0].toLowerCase().includes('the hoa')&&!r[0].includes('Bán hàng')&&!r[0].includes('Tỷ lệ'))||[];
-    // THE HOA: row có "The Hoa"
-    const R_TH=rows.find(r=>r[0]&&r[0].toLowerCase().includes('the hoa'))||[];
+    // THE HOA: row "Kết quả" có "DT" và "The Hoa" (tránh lấy nhầm row Mục tiêu hoặc TSLN)
+    const R_TH=rows.find(r=>r[0]&&r[0].includes('Kết quả')&&r[0].toLowerCase().includes('the hoa')&&r[0].includes('DT'))||[];
     for(let m=1;m<=12;m++){
       const ci=m+1;
       if(R_PT[ci]!==undefined){const v=parseViNum(R_PT[ci]);if(v!==null&&v>0)_kpiCache['dt_ht_pt_'+m]=v;}
@@ -3775,6 +3775,12 @@ function renderBOD(){
 
   // DT cells — Phúc Tea và The Hoa riêng biệt
   const dt_kh_d = dt_kh_m ? dt_kh_m * paceRatio : null;
+  // TH DT BH KH = DT HT TH thực tế × Tỷ lệ KH% (vì chưa có KH riêng cho TH)
+  const _dtKhTH=m=>{const ht=_kpiCache['dt_ht_th_'+m]||0,tl=_kpiCache['tl_kh_'+m]||0;return(ht&&tl)?ht*tl/100:null;};
+  const dt_kh_th_m=_dtKhTH(lastMonth);
+  const dt_kh_th_d=dt_kh_th_m?dt_kh_th_m*paceRatio:null;
+  const dt_kh_th_q=qMonth.reduce((s,m)=>{const v=_dtKhTH(m);return s+(v||0);},0)||null;
+  const dt_kh_th_y=[...Array(12).keys()].reduce((s,i)=>{const v=_dtKhTH(i+1);return s+(v||0);},0)||null;
   const _bHdr=(label,color,bg)=>`<div style="grid-column:1/-1;background:${bg};color:${color};font-size:11px;font-weight:700;padding:4px 16px;border-bottom:1px solid var(--bdr)">${label}</div>`;
   document.getElementById('bodDTGrid').innerHTML =
     _bHdr('🍵 PHÚC TEA','#1a6b3c','#f0fff4') +
@@ -3783,10 +3789,10 @@ function renderBOD(){
     cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_pt_q, dt_kh_q||null, false, '') +
     cell('Lũy kế năm', dt_pt_y, dt_kh_y||null, false, '') +
     _bHdr('🌸 THE HOA','#6b21a8','#f3e8ff') +
-    cell('Trong ngày', dt_th_d, null, false, '') +
-    cell(`Lũy kế T${lastMonth}`, dt_th_m, null, false, '') +
-    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_th_q, null, false, '') +
-    cell('Lũy kế năm', dt_th_y, null, false, '');
+    cell('Trong ngày', dt_th_d, dt_kh_th_d, false, dt_kh_th_m?null:'Chưa có KH TH') +
+    cell(`Lũy kế T${lastMonth}`, dt_th_m, dt_kh_th_m, false, 'Chưa có KH TH') +
+    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_th_q, dt_kh_th_q||null, false, '') +
+    cell('Lũy kế năm', dt_th_y, dt_kh_th_y||null, false, '');
 
   // LN + TSLN cells
   const ln_kh_d = ln_kh_m ? ln_kh_m * paceRatio : null;
