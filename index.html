@@ -1780,7 +1780,8 @@ const SALES_COL_MAP = {
   'TỔNG GIÁ VỐN':            'tongGiaVon',
   'TỔNG GIÁ TRỊ LỢI NHUẬN': 'tongLoiNhuan',
   'TSLN TRÊN DT':            'tsln',         // "13,75%" → 0.1375
-  'NGÀY GỬI HÀNG':          'ngayGuiHang'   // dd/MM/yyyy → yyyy-MM-dd (cột G sheet 2026)
+  'NGÀY GỬI HÀNG':          'ngayGuiHang',  // dd/MM/yyyy → yyyy-MM-dd (cột G sheet 2026)
+  'NCC':                     'ncc'           // Nhà cung cấp (THÁI SƠN, HIGO...)
 };
 const _SALES_NUM = new Set(['thang','sl','thanhTien','tongGiamGia','tongThanhTien','tongGiaVon','tongLoiNhuan','tsln']);
 
@@ -2074,6 +2075,8 @@ async function fetchMucTieu2026(){
 }
 setInterval(fetchMucTieu2026,5*60*1000);
 
+// _nccData: chỉ lưu dữ liệu ĐÃ THANH TOÁN từ sheet CÔNG NỢ NCC
+// Phát sinh được tính tự động từ D_ALL (tongGiaVon theo ncc)
 let _nccData=[];
 async function fetchNccDebt(){
   const GID='158390075';
@@ -2082,14 +2085,15 @@ async function fetchNccDebt(){
     const resp=await fetch(url);if(!resp.ok)throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const rows=parseSheetCSV(text);
+    // Cột: A=NGÀY, B=NCC, C=PHÁT SINH (không dùng), D=ĐÃ THANH TOÁN, E=GHI CHÚ
     _nccData=rows.slice(1).map(r=>{
       const raw=(r[0]||'').trim();
       let iso='';
       const m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if(m) iso=`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-      return{ngay:iso,ncc:(r[1]||'').trim().toUpperCase(),phatSinh:parseViNum(r[2])||0,daTT:parseViNum(r[3])||0,ghiChu:(r[4]||'').trim()};
-    }).filter(r=>r.ngay&&r.ncc);
-    console.info('[NccDebt]',_nccData.length,'rows');
+      return{ngay:iso,ncc:(r[1]||'').trim().toUpperCase(),daTT:parseViNum(r[3])||0,ghiChu:(r[4]||'').trim()};
+    }).filter(r=>r.ngay&&r.ncc&&r.daTT>0);
+    console.info('[NccDebt TT]',_nccData.length,'rows');
     if(document.getElementById('page-week')?.classList.contains('on'))renderWeekReport();
   }catch(e){console.warn('fetchNccDebt:',e.message);}
 }
@@ -4725,16 +4729,21 @@ function renderWeekReport(){
   function nccBlock(){
     const nccNames=['THÁI SƠN','HIGO'];
     function stats(ncc){
-      const wk=_nccData.filter(r=>r.ngay>=from&&r.ngay<=to&&r.ncc===ncc);
-      const mo=_nccData.filter(r=>r.ngay.startsWith(monthStr)&&r.ncc===ncc);
-      return{wkPS:wk.reduce((s,r)=>s+r.phatSinh,0),wkTT:wk.reduce((s,r)=>s+r.daTT,0),moPS:mo.reduce((s,r)=>s+r.phatSinh,0),moTT:mo.reduce((s,r)=>s+r.daTT,0)};
+      const nU=ncc.toUpperCase();
+      // Phát sinh: tự động từ D_ALL (tongGiaVon theo NCC trong tuần/tháng)
+      const wkPS=rows.filter(r=>r.ncc&&r.ncc.toUpperCase()===nU).reduce((s,r)=>s+(r.tongGiaVon||0),0);
+      const moPS=D_ALL.filter(r=>r.ngay&&r.ngay.startsWith(monthStr)&&r.ncc&&r.ncc.toUpperCase()===nU).reduce((s,r)=>s+(r.tongGiaVon||0),0);
+      // Đã thanh toán: từ sheet CÔNG NỢ NCC (nhập tay)
+      const wkTT=_nccData.filter(r=>r.ngay>=from&&r.ngay<=to&&r.ncc===nU).reduce((s,r)=>s+r.daTT,0);
+      const moTT=_nccData.filter(r=>r.ngay.startsWith(monthStr)&&r.ncc===nU).reduce((s,r)=>s+r.daTT,0);
+      return{wkPS,wkTT,moPS,moTT};
     }
     const data=nccNames.map(n=>({n,...stats(n)}));
     const totWkPS=data.reduce((s,v)=>s+v.wkPS,0);
     const totWkTT=data.reduce((s,v)=>s+v.wkTT,0);
     const totMoPS=data.reduce((s,v)=>s+v.moPS,0);
     const totMoTT=data.reduce((s,v)=>s+v.moTT,0);
-    const hasData=totWkPS>0||totMoPS>0;
+    const hasData=totWkPS>0||totMoPS>0||totWkTT>0||totMoTT>0;
     const rows=data.map(v=>`<tr>
       <td style="font-weight:700;color:#333;padding:8px 14px">${v.n}</td>
       <td style="text-align:right;padding:8px 14px;color:${v.wkPS>0?'#c05621':'#aaa'}">${v.wkPS>0?fB(v.wkPS):'–'}</td>
@@ -4747,7 +4756,7 @@ function renderWeekReport(){
         <div style="font-weight:700;font-size:14px;color:#b7791f">📋 Công Nợ Nhà Cung Cấp</div>
         <div style="font-size:11px;color:#999">Lũy kế tháng T${monthNum}</div>
       </div>
-      ${!hasData?`<div style="padding:16px 18px;color:#aaa;font-size:13px;font-style:italic">Chưa có dữ liệu công nợ NCC trong khoảng này. Cập nhật sheet <b>CÔNG NỢ NCC</b>.</div>`:`
+      ${!hasData?`<div style="padding:16px 18px;color:#aaa;font-size:13px;font-style:italic">Không có hàng NCC Thái Sơn / Higo trong tuần này (kiểm tra cột NCC trên sheet 2026).</div>`:`
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="background:#fef3c7;color:#92400e">
