@@ -2085,13 +2085,14 @@ async function fetchNccDebt(){
     const resp=await fetch(url);if(!resp.ok)throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const rows=parseSheetCSV(text);
-    // Cột: A=NGÀY, B=NCC, C=PHÁT SINH (không dùng), D=ĐÃ THANH TOÁN, E=GHI CHÚ
-    _nccData=rows.slice(1).map(r=>{
+    // Sheet structure: rows 1-7 là header/summary, row 8 là tiêu đề payment log
+    // Payment log (row 9+): A=NGÀY, B=NCC, C=ĐÃ THANH TOÁN, D=GHI CHÚ
+    _nccData=rows.map(r=>{
       const raw=(r[0]||'').trim();
       let iso='';
       const m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if(m) iso=`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-      return{ngay:iso,ncc:(r[1]||'').trim().toUpperCase(),daTT:parseViNum(r[3])||0,ghiChu:(r[4]||'').trim()};
+      return{ngay:iso,ncc:(r[1]||'').trim().toUpperCase(),daTT:parseViNum(r[2])||0,ghiChu:(r[3]||'').trim()};
     }).filter(r=>r.ngay&&r.ncc&&r.daTT>0);
     console.info('[NccDebt TT]',_nccData.length,'rows');
     if(document.getElementById('page-week')?.classList.contains('on'))renderWeekReport();
