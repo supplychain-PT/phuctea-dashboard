@@ -2075,10 +2075,10 @@ async function fetchMucTieu2026(){
 }
 setInterval(fetchMucTieu2026,5*60*1000);
 
-// _nccData: phát sinh NCC từ sheet CÔNG NỢ NCC
-// Cấu trúc sheet: row1=tiêu đề, row2=header, row3+=dữ liệu ngày
-// Cột: A=NGÀY, B=THÁNG, C=NCC HIGO, D=NCC THÁI SƠN
-let _nccData=[];
+// Bảng 1 (A-D): phát sinh NCC | Bảng 2 (G-K): lịch sử thanh toán
+// Row1=tiêu đề bảng, row2=header, row3+=dữ liệu
+let _nccData=[];  // [{ngay,higo,thaiSon}]
+let _nccTT=[];    // [{ngay,ncc,soTien}]
 async function fetchNccDebt(){
   const GID='158390075';
   const url=`https://docs.google.com/spreadsheets/d/1DR4q16Whx7QFlw3KIPbtR-6RpbDpwQ1MeOyT3faHnu4/export?format=csv&gid=${GID}`;
@@ -2086,15 +2086,16 @@ async function fetchNccDebt(){
     const resp=await fetch(url);if(!resp.ok)throw new Error('HTTP '+resp.status);
     const text=await resp.text();
     const allRows=parseSheetCSV(text);
-    // Bỏ 2 dòng đầu (tiêu đề bảng + header cột)
-    _nccData=allRows.slice(2).map(r=>{
-      const raw=(r[0]||'').trim();
-      let iso='';
-      const m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if(m) iso=`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-      return{ngay:iso,higo:parseViNum(r[2])||0,thaiSon:parseViNum(r[3])||0};
-    }).filter(r=>r.ngay);
-    console.info('[NccDebt]',_nccData.length,'rows');
+    const dataRows=allRows.slice(2);
+    function parseDate(s){
+      const m=(s||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:'';
+    }
+    // Bảng 1: A=0,C=2,D=3
+    _nccData=dataRows.map(r=>({ngay:parseDate(r[0]),higo:parseViNum(r[2])||0,thaiSon:parseViNum(r[3])||0})).filter(r=>r.ngay);
+    // Bảng 2: G=6,I=8,J=9
+    _nccTT=dataRows.map(r=>({ngay:parseDate(r[6]),soTien:parseViNum(r[8])||0,ncc:(r[9]||'').trim().toUpperCase()})).filter(r=>r.ngay&&r.ncc&&r.soTien>0);
+    console.info('[NccDebt]',_nccData.length,'PS,',_nccTT.length,'TT');
     if(document.getElementById('page-week')?.classList.contains('on'))renderWeekReport();
   }catch(e){console.warn('fetchNccDebt:',e.message);}
 }
@@ -4736,8 +4737,10 @@ function renderWeekReport(){
     const moTS=moRows.reduce((s,r)=>s+r.thaiSon,0);
     const moHG=moRows.reduce((s,r)=>s+r.higo,0);
     const moTot=moTS+moHG;
-    // Đã thanh toán NCC (sẽ có dữ liệu khi sheet bổ sung cột TT)
-    const wkTTTS=0,wkTTHG=0,wkTTTot=0;
+    // Đã thanh toán NCC từ Bảng 2
+    const wkTTTS=_nccTT.filter(r=>r.ngay>=from&&r.ngay<=to&&r.ncc==='THÁI SƠN').reduce((s,r)=>s+r.soTien,0);
+    const wkTTHG=_nccTT.filter(r=>r.ngay>=from&&r.ngay<=to&&r.ncc==='HIGO').reduce((s,r)=>s+r.soTien,0);
+    const wkTTTot=wkTTTS+wkTTHG;
     const net=cnTongAll-wkTTTot;
     const nccList=[{n:'THÁI SƠN',wkPS:wkTS,moPS:moTS,wkTT:wkTTTS},{n:'HIGO',wkPS:wkHG,moPS:moHG,wkTT:wkTTHG}];
     const leftTbl=nccList.map(v=>`<tr>
