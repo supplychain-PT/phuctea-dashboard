@@ -2064,13 +2064,18 @@ async function fetchMucTieu2026(){
     const R_PT=rows.find(r=>r[0]&&r[0].includes('Kết quả')&&!r[0].toLowerCase().includes('the hoa')&&!r[0].includes('Bán hàng')&&!r[0].includes('Tỷ lệ'))||[];
     // THE HOA: row "Kết quả" có "DT" và "The Hoa" (tránh lấy nhầm row Mục tiêu hoặc TSLN)
     const R_TH=rows.find(r=>r[0]&&r[0].includes('Kết quả')&&r[0].toLowerCase().includes('the hoa')&&r[0].includes('DT'))||[];
+    // Row 8 (index 7): DT Bán hàng Mục tiêu Phúc Tea | Row 9 (index 8): DT Bán hàng Mục tiêu The Hoa
+    const R_BH_PT=rows[7]||[];
+    const R_BH_TH=rows[8]||[];
     for(let m=1;m<=12;m++){
       const ci=m+1;
       if(R_PT[ci]!==undefined){const v=parseViNum(R_PT[ci]);if(v!==null&&v>0)_kpiCache['dt_ht_pt_'+m]=v;}
       if(R_TH[ci]!==undefined){const v=parseViNum(R_TH[ci]);if(v!==null&&v>0)_kpiCache['dt_ht_th_'+m]=v;}
+      if(R_BH_PT[ci]!==undefined){const v=parseViNum(R_BH_PT[ci]);if(v!==null&&v>0)_kpiCache['dt_bh_kh_pt_'+m]=v;}
+      if(R_BH_TH[ci]!==undefined){const v=parseViNum(R_BH_TH[ci]);if(v!==null&&v>0)_kpiCache['dt_bh_kh_th_'+m]=v;}
     }
     if(document.getElementById('page-ov')?.classList.contains('on'))renderKPI();
-    console.info('[MucTieu2026] PT T1=',_kpiCache['dt_ht_pt_1'],' TH T1=',_kpiCache['dt_ht_th_1']);
+    console.info('[MucTieu2026] BH_PT T11=',_kpiCache['dt_bh_kh_pt_11'],' BH_TH T11=',_kpiCache['dt_bh_kh_th_11']);
   }catch(e){console.warn('fetchMucTieu2026:',e.message);}
 }
 setInterval(fetchMucTieu2026,5*60*1000);
@@ -3801,9 +3806,14 @@ function renderBOD(){
   }
 
   // DT cells — Phúc Tea và The Hoa riêng biệt
-  const dt_kh_d = dt_kh_m ? dt_kh_m * paceRatio : null;
-  // TH DT BH KH = DT HT TH thực tế × Tỷ lệ KH% (vì chưa có KH riêng cho TH)
-  const _dtKhTH=m=>{const ht=_kpiCache['dt_ht_th_'+m]||0,tl=_kpiCache['tl_kh_'+m]||0;return(ht&&tl)?ht*tl/100:null;};
+  // PT KH từ row 8 MỤC TIÊU 2026 (DT Bán hàng Mục tiêu Phúc Tea)
+  const _dtKhPT=m=>_kpiCache['dt_bh_kh_pt_'+m]||null;
+  const dt_kh_pt_m=_dtKhPT(lastMonth)||dt_kh_m;
+  const dt_kh_d=dt_kh_pt_m?dt_kh_pt_m*paceRatio:null;
+  const dt_kh_pt_q=qMonth.reduce((s,m)=>{const v=_dtKhPT(m);return s+(v||0);},0)||dt_kh_q||null;
+  const dt_kh_pt_y=[...Array(12).keys()].reduce((s,i)=>{const v=_dtKhPT(i+1);return s+(v||0);},0)||dt_kh_y||null;
+  // TH KH từ row 9 MỤC TIÊU 2026 (DT Bán hàng Mục tiêu The Hoa)
+  const _dtKhTH=m=>_kpiCache['dt_bh_kh_th_'+m]||null;
   const dt_kh_th_m=_dtKhTH(lastMonth);
   const dt_kh_th_d=dt_kh_th_m?dt_kh_th_m*paceRatio:null;
   const dt_kh_th_q=qMonth.reduce((s,m)=>{const v=_dtKhTH(m);return s+(v||0);},0)||null;
@@ -3811,10 +3821,10 @@ function renderBOD(){
   const _bHdr=(label,color,bg)=>`<div style="grid-column:1/-1;background:${bg};color:${color};font-size:11px;font-weight:700;padding:4px 16px;border-bottom:1px solid var(--bdr)">${label}</div>`;
   document.getElementById('bodDTGrid').innerHTML =
     _bHdr('🍵 PHÚC TEA','#1a6b3c','#f0fff4') +
-    cell('Trong ngày', dt_pt_d, dt_kh_d, false, dt_kh_m?null:'Chưa có KH') +
-    cell(`Lũy kế T${lastMonth}`, dt_pt_m, dt_kh_m, false, 'Chưa có KH') +
-    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_pt_q, dt_kh_q||null, false, '') +
-    cell('Lũy kế năm', dt_pt_y, dt_kh_y||null, false, '') +
+    cell('Trong ngày', dt_pt_d, dt_kh_d, false, dt_kh_pt_m?null:'Chưa có KH') +
+    cell(`Lũy kế T${lastMonth}`, dt_pt_m, dt_kh_pt_m, false, 'Chưa có KH') +
+    cell(`Lũy kế Q${Math.ceil(lastMonth/3)}`, dt_pt_q, dt_kh_pt_q||null, false, '') +
+    cell('Lũy kế năm', dt_pt_y, dt_kh_pt_y||null, false, '') +
     _bHdr('🌸 THE HOA','#6b21a8','#f3e8ff') +
     cell('Trong ngày', dt_th_d, dt_kh_th_d, false, dt_kh_th_m?null:'Chưa có KH TH') +
     cell(`Lũy kế T${lastMonth}`, dt_th_m, dt_kh_th_m, false, 'Chưa có KH TH') +
